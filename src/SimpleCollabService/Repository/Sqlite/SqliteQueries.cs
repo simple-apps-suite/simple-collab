@@ -1,0 +1,31 @@
+// SPDX-FileCopyrightText: Copyright 2025 Fabio Iotti
+// SPDX-License-Identifier: AGPL-3.0-only
+
+using Microsoft.Data.Sqlite;
+using SimpleCollab.CodeAnalysis.SqlGenerator;
+
+namespace SimpleCollabService.Repository.Sqlite;
+
+static partial class SqliteQueries
+{
+    [SqlQuery("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = $name")]
+    public static partial Task<bool> TableExistsAsync(
+        SqliteConnection connection,
+        string name,
+        CancellationToken cancellationToken = default
+    );
+
+    [SqlQuery("SELECT name FROM migrations")]
+    public static partial IAsyncEnumerable<string> GetMigrationNamesAsync(
+        SqliteConnection connection,
+        CancellationToken cancellationToken = default
+    );
+
+    [SqlCommand("INSERT INTO migrations (name, date) VALUES ($name, $date)")]
+    public static partial Task InsertMigrationAsync(
+        SqliteConnection connection,
+        string name,
+        DateTime date,
+        CancellationToken cancellationToken = default
+    );
+}
