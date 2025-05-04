@@ -11,7 +11,7 @@ public partial class M0_FirstVersion : ISqliteMigration
     /// <inheritdoc/>
     public static async Task Apply(SqliteConnection connection, CancellationToken cancellationToken)
     {
-        await CreateTableMigrations(connection, cancellationToken);
+        await CreateTables(connection, cancellationToken);
     }
 
     [SqlCommand(
@@ -19,11 +19,44 @@ public partial class M0_FirstVersion : ISqliteMigration
             CREATE TABLE migrations (
                 id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL,
-                date TEXT NOT NULL
+                date INTEGER NOT NULL
+            );
+
+            CREATE TABLE users (
+                id INTEGER PRIMARY KEY,
+                username TEXT NOT NULL
+            );
+
+            CREATE TABLE identities (
+                id INTEGER PRIMARY KEY,
+                hash BLOB NOT NULL,
+                public_key BLOB NOT NULL,
+                user_id INTEGER,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            );
+
+            CREATE TABLE documents (
+                id INTEGER PRIMARY KEY,
+                hash BLOB NOT NULL,
+                type BLOB NOT NULL,
+                data BLOB NOT NULL
+            );
+
+            CREATE TABLE rents (
+                id INTEGER PRIMARY KEY,
+                target_id INTEGER NOT NULL,
+                by_id INTEGER NOT NULL,
+                for_id INTEGER NOT NULL,
+                expiration INTEGER,
+                public INTEGER NOT NULL,
+                signature BLOB NOT NULL,
+                FOREIGN KEY(target_id) REFERENCES documents(id),
+                FOREIGN KEY(by_id) REFERENCES identities(id),
+                FOREIGN KEY(for_id) REFERENCES identities(id)
             );
             """
     )]
-    private static partial Task<int> CreateTableMigrations(
+    private static partial Task CreateTables(
         SqliteConnection connection,
         CancellationToken cancellationToken = default
     );

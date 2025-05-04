@@ -15,7 +15,7 @@ class SqlCommandSourceGenerator : IIncrementalGenerator
     {
         context.RegisterPostInitializationOutput(ctx =>
             ctx.AddSource(
-                "SqlCommandAttribute.g.cs",
+                "SqlCommandAttributes.g.cs",
                 SourceText.From(SqlCommandHelper.AttributesSource, Encoding.UTF8)
             )
         );
@@ -76,8 +76,7 @@ class SqlCommandSourceGenerator : IIncrementalGenerator
             sqlAttribute.AttributeClass?.ToDisplayString()
             is SqlCommandHelper.SqlQueryAttributeFullName;
 
-        string? sqlString = sqlAttribute.ConstructorArguments.FirstOrDefault().Value as string;
-        if (sqlString is null)
+        if (sqlAttribute.ConstructorArguments.FirstOrDefault().Value is not string sqlString)
             return null;
 
         bool returnsAsyncEnumerable = false;

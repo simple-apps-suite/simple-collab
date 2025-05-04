@@ -3,6 +3,8 @@
 
 using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
+using SimpleCollabService.Endpoints;
+using SimpleCollabService.Repository;
 using SimpleCollabService.Repository.Abstractions;
 using SimpleCollabService.Repository.Sqlite;
 
@@ -17,11 +19,11 @@ builder.Services.AddTransient<SqliteConnection>(_ => new("Data Source=data.db"))
 
 builder.Services.AddTransient<ISimpleCollabRepository, SqliteRepository>();
 
-builder.Services.AddHostedService<RepositoryMigratorService>();
+builder.Services.AddHostedService<RepositoryMigrationService>();
 
 WebApplication app = builder.Build();
 
-app.MapGet("/", () => "Hello World!");
+app.MapExampleEndpoints();
 
 await app.RunAsync();
 
@@ -32,29 +34,3 @@ partial class AppJsonSerializerContext : JsonSerializerContext;
 class Todo();
 
 class Test();
-
-class RepositoryMigratorService(IServiceProvider services) : IHostedService
-{
-    class Executor(ISimpleCollabRepository repository, ILogger<Executor> logger)
-    {
-        public async Task ExecuteAsync(CancellationToken cancellationToken)
-        {
-            logger.LogInformation("Applying migrations...");
-
-            await repository.ApplyMigrationsAsync(cancellationToken).ConfigureAwait(false);
-
-            logger.LogInformation("All migrations applied.");
-        }
-    }
-
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
-        await using AsyncServiceScope scope = services.CreateAsyncScope();
-
-        Executor executor = ActivatorUtilities.CreateInstance<Executor>(scope.ServiceProvider);
-
-        await executor.ExecuteAsync(cancellationToken);
-    }
-
-    Task IHostedService.StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-}
