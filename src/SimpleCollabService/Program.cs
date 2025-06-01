@@ -3,6 +3,7 @@
 
 using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
+using SimpleCollabService.Data;
 using SimpleCollabService.Endpoints;
 using SimpleCollabService.Repository;
 using SimpleCollabService.Repository.Abstractions;
@@ -25,14 +26,13 @@ WebApplication app = builder.Build();
 
 RouteGroupBuilder api = app.MapGroup("/api");
 RouteGroupBuilder v1 = api.MapGroup("/v1");
-v1.MapGet("/hello", ExampleEndpoints.HelloWorld);
+v1.MapGet("/server/info", ExampleEndpoints.GetServerInfo);
+v1.MapPost("/identity", ExampleEndpoints.CreateIdentityAsync);
 
 await app.RunAsync();
 
-[JsonSerializable(typeof(Todo[]))]
-[JsonSerializable(typeof(Test))]
+[JsonSerializable(typeof(ServerInfoResponse))]
+[JsonSerializable(typeof(CreateIdentityRequest))]
+[JsonSerializable(typeof(CreateIdentityResponse))]
+[JsonSerializable(typeof(ErrorResponse))]
 partial class AppJsonSerializerContext : JsonSerializerContext;
-
-class Todo();
-
-class Test();

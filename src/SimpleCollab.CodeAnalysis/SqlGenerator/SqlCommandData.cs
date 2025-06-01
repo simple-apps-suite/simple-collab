@@ -16,6 +16,7 @@ readonly record struct SqlCommandData(
     string Sql,
     string? ResultType,
     string? ResultTypeInner,
+    bool ResultTypeInnerIsReferenceType,
     EquatableArray<(string Name, string Type, EquatableArray<int> SqlIndices)> Parameters,
     string DbConnectionParameter,
     EquatableArray<(string Name, string Type)> ResultFields

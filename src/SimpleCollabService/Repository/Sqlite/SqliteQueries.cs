@@ -28,4 +28,12 @@ static partial class SqliteQueries
         long date,
         CancellationToken cancellationToken = default
     );
+
+    [SqlCommand("INSERT OR IGNORE INTO identities (hash, public_key) VALUES ($hash, $public_key)")]
+    public static partial Task InsertIdentityAsync(
+        SqliteConnection connection,
+        byte[] hash,
+        byte[] public_key,
+        CancellationToken cancellationToken = default
+    );
 }

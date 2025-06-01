@@ -114,7 +114,7 @@ static class SqlCommandHelper
             """,
                 { IsQuery: true, ReturnsAsyncEnumerable: false } => $$"""
                         object? result = await command.ExecuteScalarAsync(cancellationToken);
-                        return ReferenceEquals(result, null) ? default : ({{data.ResultTypeInner}})Convert.ChangeType(result!, typeof({{data.ResultTypeInner}}));
+                        return ReferenceEquals(result, null) ? default : ({{data.ResultTypeInner}})Convert.ChangeType(result!, typeof({{(data.ResultTypeInnerIsReferenceType ? data.ResultTypeInner?.TrimEnd('?') : data.ResultTypeInner)}}));
             """,
                 { IsQuery: false } => $$"""
                         {{(data.ResultTypeInner is null ? "" : "return ")}}await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);

@@ -100,6 +100,7 @@ class SqlCommandSourceGenerator : IIncrementalGenerator
             sqlString,
             methodSymbol.ReturnType.ToDisplayString(),
             returnTypeInner?.ToDisplayString(),
+            returnTypeInner?.IsReferenceType ?? false,
             new(
                 [
                     .. methodSymbol.Parameters.Select(p =>
