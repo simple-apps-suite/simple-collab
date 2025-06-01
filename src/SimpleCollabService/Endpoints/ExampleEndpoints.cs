@@ -1,19 +1,14 @@
 // SPDX-FileCopyrightText: Copyright 2025 Fabio Iotti
 // SPDX-License-Identifier: AGPL-3.0-only
 
-using SimpleCollab.CodeAnalysis.EndpointsGenerator;
+namespace SimpleCollabService.Endpoints;
 
-namespace SimpleCollabService.Endpoints
+static class ExampleEndpoints
 {
-    [EndpointsGroup("")]
-    partial class ExampleEndpoints
+    public static async Task HelloWorld(HttpContext context)
     {
-        [Endpoint("/", Verb = "GET")]
-        public static async Task HelloWorld(HttpContext context)
-        {
-            await context
-                .Response.WriteAsync("Hello, world!", context.RequestAborted)
-                .ConfigureAwait(false);
-        }
+        await context
+            .Response.WriteAsync("Hello, world!", context.RequestAborted)
+            .ConfigureAwait(false);
     }
 }

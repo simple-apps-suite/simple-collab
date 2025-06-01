@@ -4,6 +4,7 @@
 using System.Data.Common;
 using Microsoft.Data.Sqlite;
 using SimpleCollabService.Repository.Sqlite.Migrations;
+using SimpleCollabService.Utility;
 
 namespace SimpleCollabService.Repository.Sqlite;
 
@@ -53,7 +54,12 @@ static partial class SqliteHelper
                 await migrateAsync(connection, cancellationToken).ConfigureAwait(false);
 
                 await SqliteQueries
-                    .InsertMigrationAsync(connection, name, DateTime.UtcNow, cancellationToken)
+                    .InsertMigrationAsync(
+                        connection,
+                        name,
+                        DateTime.UtcNow.ToUnixTimeSeconds(),
+                        cancellationToken
+                    )
                     .ConfigureAwait(false);
 
                 await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);

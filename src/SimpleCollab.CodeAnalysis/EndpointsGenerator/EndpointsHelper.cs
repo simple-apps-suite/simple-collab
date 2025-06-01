@@ -70,10 +70,10 @@ static class EndpointsHelper
             [CompilerGenerated]
             file interface IEndpoint
             {
-                static abstract RequestDelegate GetRequestDelegate();
+                static abstract IEndpointConventionBuilder Map(IEndpointRouteBuilder endpoints);
 
-                static RequestDelegate GetRequestDelegate<T>()
-                    where T : IEndpoint => T.GetRequestDelegate();
+                static IEndpointConventionBuilder Map<T>(IEndpointRouteBuilder endpoints)
+                    where T : IEndpoint => T.Map(endpoints);
             }
 
             namespace {{data.Namespace}}
@@ -89,15 +89,14 @@ static class EndpointsHelper
                     /// <returns></returns>
                     [CompilerGenerated]
                     public static IEndpointConventionBuilder Map{{data.MethodName}}(this IEndpointRouteBuilder endpoints) =>
-                        endpoints.{{GetVerbMap(
-                data.Verb
-            )}}("{{data.Pattern}}", IEndpoint.GetRequestDelegate<{{data.TypeName}}>());
+                        IEndpoint.Map<{{data.TypeName}}>(endpoints);
                 }
 
                 partial {{data.TypeType}} {{data.TypeName}} : IEndpoint
                 {
                     [CompilerGenerated]
-                    static RequestDelegate IEndpoint.GetRequestDelegate() => {{data.MethodName}};
+                    static IEndpointConventionBuilder IEndpoint.Map(IEndpointRouteBuilder endpoints) =>
+                        endpoints.{{GetVerbMap(data.Verb)}}("{{data.Pattern}}", {{data.MethodName}});
                 }
             }
 

@@ -5,7 +5,7 @@ using SimpleCollabService.Repository.Abstractions;
 
 namespace SimpleCollabService.Repository;
 
-class RepositoryMigrationService(IServiceProvider services) : IHostedService
+class MigrationService(IServiceProvider services) : IHostedService
 {
     class Executor(ISimpleCollabRepository repository, ILogger<Executor> logger)
     {

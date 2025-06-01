@@ -19,7 +19,7 @@ public partial class M0_FirstVersion : ISqliteMigration
             CREATE TABLE migrations (
                 id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL,
-                date INTEGER NOT NULL
+                date DATETIME NOT NULL
             );
 
             CREATE TABLE users (
@@ -47,8 +47,8 @@ public partial class M0_FirstVersion : ISqliteMigration
                 target_id INTEGER NOT NULL,
                 by_id INTEGER NOT NULL,
                 for_id INTEGER NOT NULL,
-                expiration INTEGER,
-                public INTEGER NOT NULL,
+                expiration DATETIME,
+                public BOOLEAN NOT NULL,
                 signature BLOB NOT NULL,
                 FOREIGN KEY(target_id) REFERENCES documents(id),
                 FOREIGN KEY(by_id) REFERENCES identities(id),

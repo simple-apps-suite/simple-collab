@@ -25,7 +25,7 @@ static partial class SqliteQueries
     public static partial Task InsertMigrationAsync(
         SqliteConnection connection,
         string name,
-        DateTime date,
+        long date,
         CancellationToken cancellationToken = default
     );
 }

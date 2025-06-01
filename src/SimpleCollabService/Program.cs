@@ -19,11 +19,13 @@ builder.Services.AddTransient<SqliteConnection>(_ => new("Data Source=data.db"))
 
 builder.Services.AddTransient<ISimpleCollabRepository, SqliteRepository>();
 
-builder.Services.AddHostedService<RepositoryMigrationService>();
+builder.Services.AddHostedService<MigrationService>();
 
 WebApplication app = builder.Build();
 
-app.MapExampleEndpoints();
+RouteGroupBuilder api = app.MapGroup("/api");
+RouteGroupBuilder v1 = api.MapGroup("/v1");
+v1.MapGet("/hello", ExampleEndpoints.HelloWorld);
 
 await app.RunAsync();
 
