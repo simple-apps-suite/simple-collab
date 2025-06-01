@@ -64,6 +64,35 @@ static class ExampleEndpoints
         return Results.Ok<CreateIdentityResponse>(new(hashBase64));
     }
 
+    public static async Task<IResult> ReadIdentityAsync(
+        [FromServices] SqliteConnection db,
+        [FromRoute] string hash,
+        CancellationToken cancellationToken
+    )
+    {
+        if (string.IsNullOrEmpty(hash))
+            return Results.BadRequest<ErrorResponse>(new(ErrorCode.InvalidHash));
+
+        byte[] hashBytes = new byte[32];
+        if (
+            !Base64Url.TryDecodeFromChars(hash, hashBytes, out int hashLen)
+            || hashLen is not SHA256.HashSizeInBytes
+        )
+            return Results.BadRequest<ErrorResponse>(new(ErrorCode.InvalidHash));
+
+        // Query for the public key
+        byte[]? publicKey = await SqliteQueries.GetPublicKeyByHashAsync(
+            db,
+            hashBytes,
+            cancellationToken
+        );
+        if (publicKey is null)
+            return Results.NotFound<ErrorResponse>(new(ErrorCode.UnknownIdentity));
+
+        string publicKeyBase64 = Base64Url.EncodeToString(publicKey);
+        return Results.Ok<IdentityResponse>(new(publicKeyBase64));
+    }
+
     public static IResult InvalidApiEndpoint()
     {
         return Results.NotFound<ErrorResponse>(new(ErrorCode.InvalidEndpoint));

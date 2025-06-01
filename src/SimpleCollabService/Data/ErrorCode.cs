@@ -39,4 +39,10 @@ enum ErrorCode
 
     [EnumMember(Value = "pow_invalid")]
     InvalidProofOfWork,
+
+    [EnumMember(Value = "hash_invalid")]
+    InvalidHash,
+
+    [EnumMember(Value = "unknown_identity")]
+    UnknownIdentity,
 }

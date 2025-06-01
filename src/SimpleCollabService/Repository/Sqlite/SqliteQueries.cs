@@ -36,4 +36,11 @@ static partial class SqliteQueries
         byte[] public_key,
         CancellationToken cancellationToken = default
     );
+
+    [SqlQuery("SELECT public_key FROM identities WHERE hash = $hash LIMIT 1")]
+    public static partial Task<byte[]?> GetPublicKeyByHashAsync(
+        SqliteConnection connection,
+        byte[] hash,
+        CancellationToken cancellationToken = default
+    );
 }

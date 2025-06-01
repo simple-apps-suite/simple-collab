@@ -30,16 +30,18 @@ RouteGroupBuilder api = app.MapGroup("/api");
 RouteGroupBuilder v1 = api.MapGroup("/v1");
 v1.MapGet("/server/info", ExampleEndpoints.GetServerInfo);
 v1.MapPost("/identity", ExampleEndpoints.CreateIdentityAsync);
+v1.MapGet("/identity/{hash}", ExampleEndpoints.ReadIdentityAsync);
 v1.MapFallback(ExampleEndpoints.InvalidApiEndpoint);
 v1.AddEndpointFilter<ExceptionFilter>();
 
 await app.RunAsync();
 
-[JsonSerializable(typeof(ServerInfoResponse))]
 [JsonSerializable(typeof(CreateIdentityRequest))]
 [JsonSerializable(typeof(CreateIdentityResponse))]
-[JsonSerializable(typeof(ErrorResponse))]
 [JsonSerializable(typeof(ErrorCode))]
+[JsonSerializable(typeof(ErrorResponse))]
+[JsonSerializable(typeof(IdentityResponse))]
+[JsonSerializable(typeof(ServerInfoResponse))]
 partial class AppJsonSerializerContext : JsonSerializerContext;
 
 class ExceptionFilter : IEndpointFilter
