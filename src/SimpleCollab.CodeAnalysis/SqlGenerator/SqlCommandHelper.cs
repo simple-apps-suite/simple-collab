@@ -93,6 +93,9 @@ static class SqlCommandHelper
                         command.Parameters.Add({{p.Name}}Parameter);
 
             """))}}
+                        // Connection
+                        await {{data.DbConnectionParameter}}.OpenAsync(cancellationToken);
+
                         // Query/Command
             {{(data switch {
                 { IsQuery: true, ReturnsAsyncEnumerable: true } => $$"""

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 using System.Runtime.Serialization;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using SimpleCollab.CodeAnalysis.EnumJsonGenerator;
 
@@ -14,8 +13,14 @@ partial class ErrorCodeJsonConverter : JsonConverter<ErrorCode>;
 [JsonConverter(typeof(ErrorCodeJsonConverter))]
 enum ErrorCode
 {
+    [EnumMember(Value = "invalid_endpoint")]
+    InvalidEndpoint,
+
     [EnumMember(Value = "malformed_request")]
     MalformedRequest,
+
+    [EnumMember(Value = "unexpected_error")]
+    UnexpectedError,
 
     [EnumMember(Value = "public_key_missing")]
     MissingPublicKey,

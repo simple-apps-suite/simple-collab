@@ -4,7 +4,6 @@
 using System.Buffers;
 using System.Buffers.Text;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Unicode;
@@ -18,7 +17,6 @@ namespace SimpleCollabService.Endpoints;
 static class ExampleEndpoints
 {
     const int Ed25519KeyLength = 32;
-    const int Ed25519KeyBase64Length = 43; // Base64Url.GetEncodedLength(Ed25519KeyLength);
 
     const int MaxInt64StringLength = 19; // long.MaxValue.ToString(CultureInfo.InvariantCulture).Length
 
@@ -44,10 +42,10 @@ static class ExampleEndpoints
             return Results.BadRequest<ErrorResponse>(new(ErrorCode.MissingProofOfWork));
 
         long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        if (req.Timestamp < now - 600 || req.Timestamp > now + 600)
+        if (req.Timestamp < now - 120 || req.Timestamp > now + 120)
             return Results.BadRequest<ErrorResponse>(new(ErrorCode.InvalidTimestamp));
 
-        byte[] publicKey = new byte[Ed25519KeyBase64Length];
+        byte[] publicKey = new byte[Ed25519KeyLength];
         if (
             !Base64Url.TryDecodeFromChars(req.PublicKey, publicKey, out int publicKeyLength)
             || publicKeyLength != publicKey.Length
@@ -64,6 +62,11 @@ static class ExampleEndpoints
 
         string hashBase64 = Base64Url.EncodeToString(hash);
         return Results.Ok<CreateIdentityResponse>(new(hashBase64));
+    }
+
+    public static IResult InvalidApiEndpoint()
+    {
+        return Results.NotFound<ErrorResponse>(new(ErrorCode.InvalidEndpoint));
     }
 
     static bool IsValidPow(string pow, ReadOnlySpan<byte> publicKey, long timestamp)

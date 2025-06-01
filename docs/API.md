@@ -6,6 +6,12 @@
 > **Public key:** `"5uUg7dmfzRLUJmfq2xt8GOTHkjuD6iVttcL0wrGpgOc"`\
 > **Hash:** `"V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs"`
 
+**Possible Error Codes:**
+Status | Error Code       | Description
+-------|------------------|-----------------------------------------------------
+404    | invalid_endpoint | Invalid endpoint.
+500    | unexpected_error | Something went wrong with the server.
+
 
 ## Server Information
 
