@@ -6,6 +6,50 @@
 > **Public key:** `"5uUg7dmfzRLUJmfq2xt8GOTHkjuD6iVttcL0wrGpgOc"`\
 > **Hash:** `"V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs"`
 
+
+## Server Information
+
+Get server information.
+
+### Endpoint
+
+```
+GET /api/v1/server/info
+```
+
+### Request
+
+<details>
+<summary>Example Request</summary>
+
+```
+GET /api/v1/server/info HTTP/1.1
+```
+</details>
+
+### Response
+
+#### Success
+
+**Body:**
+Field     | Type    | Description
+----------|---------|-----------------------------------------------------------
+timestamp | integer | Current UNIX timestamp in seconds.
+
+<details>
+<summary>Example Response</summary>
+
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "timestamp": 1608726896
+}
+```
+</details>
+
+
 ## Create Identity
 
 Create a new anonymous identity.
@@ -18,19 +62,26 @@ POST /api/v1/identity
 
 ### Request
 
-Field      | Type   | Description
------------|--------|-----------------------------------------------------------
-public_key | string | Public key in base64url format.
-pow        | string | PoW 26 on the public key.
+**Body:**
+Field      | Type    | Description
+-----------|---------|----------------------------------------------------------
+timestamp  | integer | Current UNIX timestamp in seconds.
+public_key | string  | Ed25519 public key in base64url format.
+pow        | string  | `pow(sha256(public_key + timestamp))`
 
 <details>
 <summary>Example Request</summary>
+
+> [!NOTE]
+> In this example, the proof-of-work is over `sha256("5uUg7dmfzRLUJmfq2xt8GOTHkjuD6iVttcL0wrGpgOc" + "1608726896")`,
+> which is `sha256("5uUg7dmfzRLUJmfq2xt8GOTHkjuD6iVttcL0wrGpgOc1608726896")`.
 
 ```json
 POST /api/v1/identity HTTP/1.1
 Content-Type: application/json
 
 {
+  "timestamp": 1608726896,
   "public_key": "5uUg7dmfzRLUJmfq2xt8GOTHkjuD6iVttcL0wrGpgOc",
   "pow": "TODO"
 }
@@ -73,7 +124,9 @@ Status | Error Code         | Description
 -------|--------------------|---------------------------------------------------
 400    | malformed_request  | Request body is not valid JSON.
 400    | public_key_missing | Public key field missing.
+400    | timestamp_missing  | Timestamp field missing.
 400    | pow_missing        | Proof-of-work field missing.
+400    | timestamp_invalid  | Timestamp is not a valid UNIX timestamp.
 400    | public_key_invalid | Public key not valid.
 400    | pow_invalid        | Proof-of-work not valid.
 
@@ -86,6 +139,82 @@ Content-Type: application/json
 
 {
   "error": "pow_invalid"
+}
+```
+</details>
+
+
+## Read Identity
+
+Read the public key for a given identity.
+
+### Endpoint
+
+```
+GET /api/v1/identity/{hash}
+```
+
+### Request
+
+**Path:**
+Segment    | Type   | Description
+-----------|--------|-----------------------------------------------------------
+hash       | string | Identity hash in base64url format.
+
+<details>
+<summary>Example Request</summary>
+
+```
+GET /api/v1/identity/V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs HTTP/1.1
+```
+</details>
+
+### Response
+
+#### Success
+
+Identity found.
+
+**Body:**
+Field      | Type   | Description
+-----------|--------|-----------------------------------------------------------
+public_key | string | Ed25519 public key in base64url format.
+
+<details>
+<summary>Example Response</summary>
+
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "public_key": "5uUg7dmfzRLUJmfq2xt8GOTHkjuD6iVttcL0wrGpgOc"
+}
+```
+</details>
+
+#### Error
+
+**Body:**
+Field | Type   | Description
+------|--------|----------------------------------------------------------------
+error | string | Error code.
+
+**Possible Error Codes:**
+Status | Error Code        | Description
+-------|-------------------|----------------------------------------------------
+400    | hash_invalid      | Hash is not valid.
+404    | unknown_identity  | Identity hash not found.
+
+<details>
+<summary>Example Response</summary>
+
+```json
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+
+{
+  "error": "unknown_identity"
 }
 ```
 </details>
@@ -156,16 +285,19 @@ Field | Type   | Description
 error | string | Error code.
 
 **Possible Error Codes:**
-Status | Error Code        | Description
--------|-------------------|----------------------------------------------------
-400    | malformed_request | Request body is not valid JSON.
-400    | identity_missing  | Identity hash field missing.
-400    | username_missing  | Username field missing.
-400    | signature_missing | Signature field missing.
-400    | username_invalid  | Username does not meet requirements.
-400    | signature_invalid | Signature does not match.
-404    | unknown_identity  | Identity hash not found.
-409    | username_taken    | Username already in use.
+Status | Error Code           | Description
+-------|----------------------|-------------------------------------------------
+400    | malformed_request    | Request body is not valid JSON.
+400    | timestamp_missing    | Timestamp field missing.
+400    | identity_missing     | Identity hash field missing.
+400    | username_missing     | Username field missing.
+400    | signature_missing    | Signature field missing.
+400    | timestamp_invalid    | Timestamp is not a valid UNIX timestamp.
+400    | username_invalid     | Username does not meet requirements.
+400    | signature_invalid    | Signature does not match.
+403    | registrations_closed | This server does not allow to create new users.
+404    | unknown_identity     | Identity hash not found.
+409    | username_taken       | Username already in use.
 
 <details>
 <summary>Example Response</summary>
@@ -179,6 +311,109 @@ Content-Type: application/json
 }
 ```
 </details>
+
+
+## User Information
+
+Read your user information.
+
+### Endpoint
+
+```
+POST /api/v1/user/info
+```
+
+### Request
+
+**Body:**
+Field     | Type    | Description
+----------|---------|-----------------------------------------------------------
+timestamp | integer | Current UNIX timestamp in seconds.
+username  | string  | Your username.
+identity  | string  | Identity hash in base64url format.
+signature | string  | `sign("INFO " + base64url(sha256(username)) + " " + timestamp, private_key(identity))`
+
+<details>
+<summary>Example Request</summary>
+
+> [!NOTE]
+> In this example, the signature is over `"INFO " + base64url(sha256("example_user")) + " " + "1608726896"`,
+> which is `"INFO j3BwXiW6oAwtuKkl1I53mum4elV3uQ1TOcP-8BEeH0A 1608726896"`.
+
+```json
+POST /api/v1/user/info HTTP/1.1
+Content-Type: application/json
+
+{
+  "timestamp": 1608726896,
+  "username": "example_user",
+  "identity": "V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs",
+  "signature": "NpHXCe9gUV6brlRKs-f1oMoIjxSQGpij2JOZ4AaKK9p14HbAeiYv0HrYEaxGM28d3VJvqcwUHrJvA0ti5KvdDQ"
+}
+```
+</details>
+
+### Response
+
+#### Success
+
+User information returned successfully.
+
+**Body:**
+Field      | Type    | Description
+-----------|---------|----------------------------------------------------------
+quota      | integer | Maximum allowed usage in bytes.
+used       | integer | Approximate current usage in bytes.
+expiration | integer | Account expiration UNIX timestamp in seconds (unless renewed).
+
+<details>
+<summary>Example Response</summary>
+
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "quota": 104857600,
+  "used": 4096,
+  "expiration": 1737635696
+}
+```
+</details>
+
+#### Error
+
+**Body:**
+Field | Type   | Description
+------|--------|----------------------------------------------------------------
+error | string | Error code.
+
+**Possible Error Codes:**
+Status | Error Code        | Description
+-------|-------------------|----------------------------------------------------
+400    | malformed_request | Request body is not valid JSON.
+400    | timestamp_missing | Timestamp field missing.
+400    | username_missing  | Username field missing.
+400    | identity_missing  | Identity field missing.
+400    | signature_missing | Signature field missing.
+400    | timestamp_invalid | Timestamp is not a valid UNIX timestamp.
+400    | identity_invalid  | Identity not valid for this user.
+400    | signature_invalid | Signature does not match.
+404    | unknown_user      | Username not found.
+
+<details>
+<summary>Example Response</summary>
+
+```json
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+
+{
+  "error": "unknown_user"
+}
+```
+</details>
+
 
 ## Associate Identity to User
 
@@ -250,12 +485,14 @@ error | string | Error code.
 Status | Error Code               | Description
 -------|--------------------------|---------------------------------------------
 400    | malformed_request        | Request body is not valid JSON.
+400    | timestamp_missing        | Timestamp field missing.
 400    | current_identity_missing | Current identity field missing.
 400    | new_identity_missing     | New identity field missing.
 400    | username_missing         | Username field missing.
 400    | signature_missing        | Signature field missing.
+400    | timestamp_invalid        | Timestamp is not a valid UNIX timestamp.
 400    | signature_invalid        | Signature does not match.
-400    | invalid_current_identity | Current identity not associated with the user.
+400    | current_identity_invalid | Current identity not associated with the user.
 404    | unknown_current_identity | Current identity hash not found.
 404    | unknown_new_identity     | New identity hash not found.
 
@@ -271,6 +508,7 @@ Content-Type: application/json
 }
 ```
 </details>
+
 
 ## Disassociate Identity from User
 
@@ -343,9 +581,11 @@ error | string | Error code.
 Status | Error Code              | Description
 -------|-------------------------|----------------------------------------------
 400    | malformed_request       | Request body is not valid JSON.
+400    | timestamp_missing       | Timestamp field missing.
 400    | identity_missing        | Identity field missing.
 400    | username_missing        | Username field missing.
 400    | signature_missing       | Signature field missing.
+400    | timestamp_invalid       | Timestamp is not a valid UNIX timestamp.
 400    | signature_invalid       | Signature does not match.
 400    | identity_not_associated | Identity is not associated with the user.
 404    | unknown_identity        | Identity hash not found.
@@ -362,6 +602,7 @@ Content-Type: application/json
 }
 ```
 </details>
+
 
 ## Create Document
 
@@ -509,21 +750,25 @@ Field | Type   | Description
 error | string | Error code.
 
 **Possible Error Codes:**
-Status | Error Code               | Description
--------|--------------------------|---------------------------------------------
-400    | malformed_request        | Request body is not valid JSON.
-400    | identity_missing         | Identity field missing.
-400    | type_missing             | Type field missing.
-400    | data_missing             | Data field missing.
-400    | signature_missing        | Signature field missing.
-400    | type_invalid             | Type is not a valid GUID.
-400    | signature_invalid        | Signature does not match.
-400    | expiration_invalid       | Expiration is not a valid UNIX timestamp.
-400    | public_invalid           | Public is not a boolean.
-400    | share_identity_missing   | One or more share identity fields missing.
-400    | share_signature_missing  | One or more share signature do not match.
-400    | share_expiration_invalid | Expiration is not a valid UNIX timestamp.
-404    | unknown_identity         | Identity hash not found.
+Status | Error Code                | Description
+-------|---------------------------|--------------------------------------------
+400    | malformed_request         | Request body is not valid JSON.
+400    | timestamp_missing         | Timestamp field missing.
+400    | identity_missing          | Identity field missing.
+400    | type_missing              | Type field missing.
+400    | data_missing              | Data field missing.
+400    | signature_missing         | Signature field missing.
+400    | share_identity_missing    | One or more share identity fields missing.
+400    | share_signature_missing   | One or more share signature fields missing.
+400    | timestamp_invalid         | Timestamp is not a valid UNIX timestamp.
+400    | type_invalid              | Type is not a valid GUID.
+400    | expiration_invalid        | Expiration is not a valid UNIX timestamp.
+400    | signature_invalid         | Signature does not match.
+400    | publish_signature_invalid | Publish signature does not match.
+400    | share_identity_invalid    | One or more share identity fields is not valid.
+400    | share_expiration_missing  | One or more share expiration fields is not a valid UNIX timestamp.
+400    | share_signature_invalid   | One or more share signatures do not match.
+404    | unknown_identity          | Identity hash not found.
 
 <details>
 <summary>Example Response</summary>
@@ -538,14 +783,124 @@ Content-Type: application/json
 ```
 </details>
 
-## Share Document
 
-Share an existing document with other identities.
+## Read Document
+
+Read a document by its hash.
+
+> [!NOTE]
+> All documents are public by design. Anyone can read any document even if it
+> has not been shared with them, provided that they know its hash. If you don't
+> want a document to be readable by other users, you must encrypt it.
 
 ### Endpoint
 
 ```
-POST /api/v1/document/share
+GET /api/v1/document/{hash}?format={format}
+```
+
+### Request
+
+**Path:**
+Segment | Type   | Description
+--------|--------|--------------------------------------------------------------
+hash    | string | Document hash in base64url format.
+
+**Query Parameters:**
+Parameter | Description
+----------|---------------------------------------------------------------------
+format    | Preferred response format (optional).
+
+**Possible Formats:**
+Format | Description
+-------|------------------------------------------------------------------------
+json   | Returns the response as a JSON object (default).
+raw    | Returns the document data as raw bytes and the type as a header.
+
+### Response
+
+#### Success
+
+JSON format (default if not specified).
+
+**Body:**
+Field | Type   | Description
+------|--------|----------------------------------------------------------------
+type  | string | Document type GUID.
+data  | string | Document data in base64url format.
+
+<details>
+<summary>Example Response (JSON)</summary>
+
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "type": "826eca95-0078-434e-b93a-8af087da1a16",
+  "data": "SGVsbG8sIFdvcmxkIQ"
+}
+```
+</details>
+
+Raw format.
+
+**Headers:**
+Header          | Description
+----------------|---------------------------------------------------------------
+X-Document-Type | Type GUID.
+
+**Body:**
+Raw document data (binary).
+
+<details>
+<summary>Example Response (Raw)</summary>
+
+```
+HTTP/1.1 200 OK
+Content-Type: application/octet-stream
+X-Document-Type: 826eca95-0078-434e-b93a-8af087da1a16
+
+Hello, World!
+```
+</details>
+
+#### Error
+
+Errors are always in JSON format.
+
+**Body:**
+Field | Type   | Description
+------|--------|----------------------------------------------------------------
+error | string | Error code.
+
+**Possible Error Codes:**
+Status | Error Code        | Description
+-------|-------------------|----------------------------------------------------
+404    | unknown_document  | Document hash not found.
+
+<details>
+<summary>Example Response</summary>
+
+```json
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+
+{
+  "error": "unknown_document"
+}
+```
+</details>
+
+
+## Rent or Share Document
+
+Rent a document for yourself, or share it with other identities.
+
+### Endpoint
+
+```
+POST /api/v1/document/rent
 ```
 
 ### Request
@@ -571,7 +926,7 @@ share[].signature  | string   | `sign("RENT " + base64url(sha256(document + shar
 > When the expiration is not set, use `""` in its place.
 
 ```json
-POST /api/v1/document/share HTTP/1.1
+POST /api/v1/document/rent HTTP/1.1
 Content-Type: application/json
 
 {
@@ -617,12 +972,19 @@ error | string | Error code.
 Status | Error Code               | Description
 -------|--------------------------|---------------------------------------------
 400    | malformed_request        | Request body is not valid JSON.
+400    | timestamp_missing        | Timestamp field missing.
 400    | document_missing         | Document hash field missing.
 400    | identity_missing         | Sharing identity field missing.
 400    | share_missing            | Share targets field missing.
 400    | share_identity_missing   | One or more share identity fields missing.
-400    | share_signature_missing  | One or more share signature do not match.
-400    | share_expiration_invalid | Expiration is not a valid UNIX timestamp.
+400    | share_signature_missing  | One or more share signature fields missing.
+400    | timestamp_invalid        | Timestamp is not a valid UNIX timestamp.
+400    | document_invalid         | Document hash is not valid.
+400    | identity_invalid         | Sharing identity is not valid.
+400    | share_invalid            | Share field is not valid.
+400    | share_identity_invalid   | One or more share identity fields invalid.
+400    | share_expiration_invalid | One or more share expiration fields is not a valid UNIX timestamp.
+400    | share_signature_invalid  | One or more share signatures do not match.
 404    | unknown_document         | Document hash not found.
 
 <details>
@@ -634,6 +996,570 @@ Content-Type: application/json
 
 {
   "error": "unknown_document"
+}
+```
+</details>
+
+
+## Unrent or Unshare Document
+
+Forget a document by unrenting it or cancelling a share.
+
+### Endpoint
+
+```
+DELETE /api/v1/document
+```
+
+### Request
+
+**Body:**
+Field     | Type     | Description
+----------|----------|-----------------------------------------------------------
+timestamp | integer  | Current UNIX timestamp in seconds.
+identity  | string   | Identity hash in base64url format.
+document  | string   | Document hash in base64url format.
+targets   | string[] | Array of target identities (optional, defaults to self).
+signature | string   | `sign("UNRENT " + base64url(sha256(document + concat(targets))) + " " + timestamp, private_key(identity))`
+
+<details>
+<summary>Example Request</summary>
+
+> [!NOTE]
+> In this example, the signature is over `"UNRENT " + base64url(sha256("RlzbiZkTdKO-5_mRng8zlsHXxNXh81ZV-5fLE1XyV0Q" + "V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs" + "y4dr5PwoEpKYlJS8OojzcVgN0UI_NH8NRTVo5b3tAc8") + " " + "1608726896"`
+> which is `"UNRENT hZLYIzDlEf3NcwLa57gZEUyv-OxRcpHZgd_nyQsh1C8 1608726896"`.
+>
+> If no targets are defined, use `""`.
+
+```json
+DELETE /api/v1/document HTTP/1.1
+Content-Type: application/json
+
+{
+  "timestamp": 1608726896,
+  "identity": "V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs",
+  "document": "RlzbiZkTdKO-5_mRng8zlsHXxNXh81ZV-5fLE1XyV0Q",
+  "targets": [
+    "V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs",
+    "y4dr5PwoEpKYlJS8OojzcVgN0UI_NH8NRTVo5b3tAc8"
+  ],
+  "signature": "5Lap55bDBVi2AaFPhv-VrFHDDwrWAmZCvTDoJso8n7gpWZPmsUEkT4xm2wmvQ-g37zIAG7LYo5dvEiWOHw2wDg"
+}
+```
+</details>
+
+### Response
+
+#### Success
+
+Document unrented successfully.
+
+<details>
+<summary>Example Response</summary>
+
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{}
+```
+</details>
+
+#### Error
+
+**Body:**
+Field | Type   | Description
+------|--------|----------------------------------------------------------------
+error | string | Error code.
+
+**Possible Error Codes:**
+Status | Error Code        | Description
+-------|-------------------|----------------------------------------------------
+400    | malformed_request | Request body is not valid JSON.
+400    | timestamp_missing | Timestamp field missing.
+400    | identity_missing  | Identity field missing.
+400    | document_missing  | Document hash field missing.
+400    | signature_missing | Signature field missing.
+400    | timestamp_invalid | Timestamp is not a valid UNIX timestamp.
+400    | document_invalid  | Document hash is not valid.
+400    | targets_invalid   | Targets field is not valid.
+400    | signature_invalid | Signature does not match.
+404    | unknown_identity  | Identity hash not found.
+404    | unknown_document  | Document hash not found.
+
+<details>
+<summary>Example Response</summary>
+
+```json
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+
+{
+  "error": "unknown_document"
+}
+```
+</details>
+
+
+## Update Expiration
+
+Change the expiration of a document rent for yourself or for specific shares.
+
+### Endpoint
+
+```
+POST /api/v1/document/expiration
+```
+
+### Request
+
+**Body:**
+Field      | Type     | Description
+-----------|----------|---------------------------------------------------------
+timestamp  | integer  | Current UNIX timestamp in seconds.
+identity   | string   | Identity hash in base64url format.
+document   | string   | Document hash in base64url format.
+expiration | integer  | New expiration UNIX timestamp in seconds (optional, null to remove).
+targets    | string[] | Array of target identities (optional, defaults to self).
+signature  | string   | `sign("SET_EXPIRATION " + base64url(sha256(document + concat(targets) + expiration)) + " " + timestamp, private_key(identity))`
+
+<details>
+<summary>Example Request</summary>
+
+> [!NOTE]
+> In this example, the signature is over `"SET_EXPIRATION " + base64url(sha256("RlzbiZkTdKO-5_mRng8zlsHXxNXh81ZV-5fLE1XyV0Q" + "V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs" + "y4dr5PwoEpKYlJS8OojzcVgN0UI_NH8NRTVo5b3tAc8" + "1737635696")) + " " + "1608726896"`,
+> which is `"SET_EXPIRATION " + base64url(sha256("RlzbiZkTdKO-5_mRng8zlsHXxNXh81ZV-5fLE1XyV0QV7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTsy4dr5PwoEpKYlJS8OojzcVgN0UI_NH8NRTVo5b3tAc81737635696")) + " 1608726896"`
+> which is `"SET_EXPIRATION nyTzqxORMXUFZZbDzZtzQzma6LNSojGwSw2Ht0APquU 1608726896"`.
+>
+> When the expiration is not set, use `""` in its place.
+>
+> If no targets are defined, use `""`.
+
+```json
+POST /api/v1/document/expiration HTTP/1.1
+Content-Type: application/json
+
+{
+  "timestamp": 1608726896,
+  "identity": "V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs",
+  "document": "RlzbiZkTdKO-5_mRng8zlsHXxNXh81ZV-5fLE1XyV0Q",
+  "expiration": 1737635696,
+  "targets": [
+    "V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs",
+    "y4dr5PwoEpKYlJS8OojzcVgN0UI_NH8NRTVo5b3tAc8"
+  ],
+  "signature": "1saxMK4lbsRovdsfqO1uMADQdfa4zt0CojbPcJmS0blRBr1O0F_HHDVbXmHXTVdjJkdk-6Tt-FrlrkiRRpSwDA"
+}
+```
+</details>
+
+### Response
+
+#### Success
+
+Expiration changed successfully.
+
+<details>
+<summary>Example Response</summary>
+
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{}
+```
+</details>
+
+#### Error
+
+**Body:**
+Field | Type   | Description
+------|--------|---------------------------
+error | string | Error code.
+
+**Possible Error Codes:**
+Status | Error Code           | Description
+-------|----------------------|--------------------------
+400    | malformed_request    | Request body is not valid JSON.
+400    | timestamp_missing    | Timestamp field missing.
+400    | identity_missing     | Identity field missing.
+400    | document_missing     | Document hash field missing.
+400    | expiration_missing   | Expiration field missing.
+400    | signature_missing    | Signature field missing.
+400    | timestamp_invalid    | Timestamp is not a valid UNIX timestamp.
+400    | identity_invalid     | Identity is not valid.
+400    | document_invalid     | Document hash is not valid.
+400    | expiration_invalid   | Expiration is not a valid UNIX timestamp.
+400    | targets_invalid      | Targets field is not valid.
+400    | signature_invalid    | Signature does not match.
+404    | unknown_identity     | Identity hash not found.
+404    | unknown_document     | Document hash not found.
+
+<details>
+<summary>Example Response</summary>
+
+```json
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+
+{
+  "error": "expiration_invalid"
+}
+```
+</details>
+
+## Listen for Documents
+
+Listen for new documents shared with an identity.
+
+Listening can be done either synchronously or asynchronously. By listening
+synchronously it's possible to receive all documents in real-time as they are
+shared with your identity. By listening asynchronously it's possible to fetch
+the new documents that have been shared with you identity since last time.
+
+### Endpoint
+
+```
+POST /api/v1/document/listen?timeout={timeout}
+```
+
+### Request
+
+**Body:**
+Field     | Type     | Description
+----------|----------|----------------------------------------------------------
+timestamp | integer  | Current UNIX timestamp in seconds.
+identity  | string   | Identity hash in base64url format.
+types     | string[] | Array of document type GUIDs to listen for.
+signature | string   | `sign("LISTEN " + base64url(sha256(concat(types))) + " " + timestamp, private_key(identity))`
+cursor    | string   | Opaque cursor for pagination/continuation (optional).
+
+**Query Parameters:**
+Parameter | Description
+----------|---------------------------------------------------------------------
+timeout   | Timeout in seconds (optional).
+
+If a timeout is specified, the server will try to keep the connection open for
+at most the requested amount of time before giving up waiting for new documents.
+
+<details>
+<summary>Example Request</summary>
+
+> [!NOTE]
+> In this example, the signature is over `"LISTEN " + base64url(sha256("826eca95-0078-434e-b93a-8af087da1a16" + "e0386c32-9b6b-42c0-bf1a-7f81793ad96a")) + " " + "1608726896"`
+> which is `"LISTEN YCrEjPzcVbObjBjSZmZpEDuihHjv5mqr2sunLFVW1do 1608726896"`.
+
+```json
+POST /api/v1/document/listen HTTP/1.1
+Content-Type: application/json
+
+{
+  "timestamp": 1608726896,
+  "identity": "V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs",
+  "types": [
+    "826eca95-0078-434e-b93a-8af087da1a16",
+    "e0386c32-9b6b-42c0-bf1a-7f81793ad96a"
+  ],
+  "signature": "xevrjGs09jWZnPQ7spUoAALoS-wTlmx_NLTscF7C9AdsqXcxc0EOMbj5MlZMwRgaaVvDXNo_9XiYarI2hWG1Dg",
+  "cursor": "VGhpcyBpcyBhbiBvcGFxdWUgY3Vyc29yLCBwbGVhc2UgZG8gbm90IHRyeSB0byBkZWNvZGUgaXQuIDop"
+}
+```
+</details>
+
+You may also listen for documents over a WebSocket connection. Endpoint, request
+payload and response format remain the same. The request payload should be sent
+as the first message, and the response will be sent as a websocket message.
+
+As long as the connection will remain open, the server will keep sending new
+documents as messages.
+
+The timeout query parameter is ignored when making a WebSocket request.
+
+### Response
+
+#### Success
+
+**Body:**
+Field   | Type     | Description
+--------|----------|------------------------------------------------------------
+hashes  | string[] | Array of document hashes in base64url format.
+cursor  | string   | Opaque cursor for fetching the next batch.
+
+<details>
+<summary>Example Response</summary>
+
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "hashes": [
+    "RlzbiZkTdKO-5_mRng8zlsHXxNXh81ZV-5fLE1XyV0Q",
+    "y4dr5PwoEpKYlJS8OojzcVgN0UI_NH8NRTVo5b3tAc8"
+  ],
+  "cursor": "VGhpcyBpcyBhbm90aGVyIG9wYXF1ZSBjdXJzb3IsIGl0cyBjb250ZW50IGlzIG9ubHkgbWVhbmluZ2Z1bCB0byB0aGUgc2VydmVyLg"
+}
+```
+</details>
+
+<details>
+<summary>Example WebSocket Message</summary>
+
+```json
+{
+  "hashes": [
+    "RlzbiZkTdKO-5_mRng8zlsHXxNXh81ZV-5fLE1XyV0Q",
+    "y4dr5PwoEpKYlJS8OojzcVgN0UI_NH8NRTVo5b3tAc8"
+  ],
+  "cursor": "VGhpcyBpcyBhbm90aGVyIG9wYXF1ZSBjdXJzb3IsIGl0cyBjb250ZW50IGlzIG9ubHkgbWVhbmluZ2Z1bCB0byB0aGUgc2VydmVyLg"
+}
+```
+</details>
+
+#### Error
+
+**Body:**
+Field | Type   | Description
+------|--------|----------------------------------------------------------------
+error | string | Error code.
+
+**Possible Error Codes:**
+Status | Error Code        | Description
+-------|-------------------|----------------------------------------------------
+400    | malformed_request | Request body is not valid JSON.
+400    | timestamp_missing | Timestamp field missing.
+400    | identity_missing  | Identity field missing.
+400    | types_missing     | Types field missing or empty.
+400    | signature_missing | Signature field missing.
+400    | timestamp_invalid | Timestamp is not a valid UNIX timestamp.
+400    | identity_invalid  | Identity is not valid.
+400    | types_invalid     | Types field is not valid.
+400    | signature_invalid | Signature does not match.
+400    | cursor_invalid    | Cursor field is not valid.
+404    | unknown_identity  | Identity hash not found.
+
+<details>
+<summary>Example Response</summary>
+
+```json
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+
+{
+  "error": "types_missing"
+}
+```
+</details>
+
+
+## List Document Types
+
+List all document types for which there exists at least one document counted
+towards your user quota, this includes documents rented by your identity and
+documents shared **with** other identities, but it does not include documents
+shared **by** other identities unless they have also been rented by your
+identity.
+
+### Endpoint
+
+```
+POST /api/v1/document/type/list
+```
+
+### Request
+
+**Body:**
+Segment   | Type    | Description
+----------|---------|-----------------------------------------------------------
+timestamp | integer | Current UNIX timestamp in seconds.
+identity  | string  | Identity hash in base64url format.
+signature | string  | `sign("LIST_TYPES " + timestamp, private_key(identity))`
+cursor    | string  | Opaque cursor for pagination/continuation (optional).
+
+<details>
+<summary>Example Request</summary>
+
+> [!NOTE]
+> In this example, the signature is over `"LIST_TYPES " + "1608726896"`,
+> which is `"LIST_TYPES 1608726896"`.
+
+```json
+POST /api/v1/document/type/list HTTP/1.1
+Content-Type: application/json
+
+{
+  "timestamp": 1608726896,
+  "identity": "V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs",
+  "signature": "r-5Th5KyQaTMk74AvcmJVnmUuxurrBjrErZqsnFX-lz6PF3tHaFMP25q4MUCoV1rhEDGEvgPvR6GuFIubHG3CQ",
+  "cursor": null
+}
+```
+</details>
+
+### Response
+
+#### Success
+
+**Body:**
+Field  | Type     | Description
+-------|----------|-------------------------------------------------------------
+types  | string[] | Array of document type GUIDs.
+cursor | string   | Opaque cursor for pagination/continuation (null if finished).
+
+<details>
+<summary>Example Response</summary>
+
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "types": [
+    "826eca95-0078-434e-b93a-8af087da1a16",
+    "e0386c32-9b6b-42c0-bf1a-7f81793ad96a"
+  ],
+  "cursor": "UGFzcyB0aGlzIGN1cnNvciB0byByZWFkIHRoZSBuZXh0IHBhZ2Uu"
+}
+```
+</details>
+
+#### Error
+
+**Body:**
+Field | Type   | Description
+------|--------|----------------------------------------------------------------
+error | string | Error code.
+
+**Possible Error Codes:**
+Status | Error Code        | Description
+-------|-------------------|----------------------------------------------------
+400    | timestamp_missing | Timestamp field missing.
+400    | identity_missing  | Identity field missing.
+400    | signature_missing | Signature field missing.
+400    | timestamp_invalid | Timestamp is not a valid UNIX timestamp.
+400    | identity_invalid  | Identity is not valid.
+400    | signature_invalid | Signature does not match.
+400    | cursor_invalid    | Cursor field is not valid.
+404    | unknown_identity  | Identity hash not found.
+
+<details>
+<summary>Example Response</summary>
+
+```json
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+
+{
+  "error": "unknown_identity"
+}
+```
+</details>
+
+
+## List Documents
+
+List all document counted towards your user quota, this includes documents
+rented by your identity and documents shared **with** other identities, but it
+does not include documents shared **by** other identities unless they have also
+been rented by your identity.
+
+### Endpoint
+
+```
+POST /api/v1/document/list
+```
+
+### Request
+
+**Body:**
+Segment   | Type     | Description
+----------|----------|----------------------------------------------------------
+timestamp | integer  | Current UNIX timestamp in seconds.
+identity  | string   | Identity hash in base64url format.
+types     | string[] | Array of document type GUIDs.
+signature | string   | `sign("LIST " + base64url(sha256(concat(types))) + " " + timestamp, private_key(identity))`
+cursor    | string   | Opaque cursor for pagination/continuation (optional).
+
+<details>
+<summary>Example Request</summary>
+
+> [!NOTE]
+> In this example, the signature is over `"LIST " + base64url(sha256("826eca95-0078-434e-b93a-8af087da1a16" + "e0386c32-9b6b-42c0-bf1a-7f81793ad96a")) + " " + "1608726896"`
+> which is `"LIST YCrEjPzcVbObjBjSZmZpEDuihHjv5mqr2sunLFVW1do 1608726896"`.
+
+```json
+POST /api/v1/document/list HTTP/1.1
+Content-Type: application/json
+
+{
+  "timestamp": 1608726896,
+  "identity": "V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs",
+  "types": [
+    "826eca95-0078-434e-b93a-8af087da1a16",
+    "e0386c32-9b6b-42c0-bf1a-7f81793ad96a"
+  ],
+  "signature": "y_-jz2PdwEM8TaDY65N24rXl24_KbaD0nhPegEU4rr6Teq40sYe9_5TZi7W2tJIpc1ZfSWrjlgsp6HWHo9PIBA",
+  "cursor": null
+}
+```
+</details>
+
+### Response
+
+#### Success
+
+**Body:**
+Field  | Type     | Description
+-------|----------|-------------------------------------------------------------
+hashes | string[] | Array of document hashes in base64url format.
+cursor | string   | Opaque cursor for pagination/continuation (null if finished).
+
+<details>
+<summary>Example Response</summary>
+
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "hashes": [
+    "RlzbiZkTdKO-5_mRng8zlsHXxNXh81ZV-5fLE1XyV0Q",
+    "y4dr5PwoEpKYlJS8OojzcVgN0UI_NH8NRTVo5b3tAc8"
+  ],
+  "cursor": "VXNlIHRoaXMgY3Vyc29yIGluIHRoZSBuZXh0IGNhbGwgdG8gZ2V0IHRoZSBuZXh0IHBhZ2Uu"
+}
+```
+</details>
+
+#### Error
+
+**Body:**
+Field | Type   | Description
+------|--------|----------------------------------------------------------------
+error | string | Error code.
+
+**Possible Error Codes:**
+Status | Error Code        | Description
+-------|-------------------|----------------------------------------------------
+400    | identity_missing  | Identity field missing.
+400    | timestamp_missing | Timestamp field missing.
+400    | signature_missing | Signature field missing.
+400    | timestamp_invalid | Timestamp is not a valid UNIX timestamp.
+400    | identity_invalid  | Identity is not valid.
+400    | types_invalid     | Types field is not valid.
+400    | signature_invalid | Signature does not match.
+400    | cursor_invalid    | Cursor field is not valid.
+404    | unknown_identity  | Identity hash not found.
+
+<details>
+<summary>Example Response</summary>
+
+```json
+HTTP/1.1 404 Not Found
+Content-Type: application/json
+
+{
+  "error": "unknown_identity"
 }
 ```
 </details>
