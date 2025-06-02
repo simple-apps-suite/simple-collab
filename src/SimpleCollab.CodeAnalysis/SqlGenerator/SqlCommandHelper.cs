@@ -24,6 +24,14 @@ static class SqlCommandHelper
             namespace SimpleCollab.CodeAnalysis.SqlGenerator
             {
                 /// <summary>
+                /// Used as a marker in logs for queries.
+                /// </summary>
+                internal sealed class Queries
+                {
+                    Queries() { }
+                }
+
+                /// <summary>
                 /// Attribute to mark a method as a SQL command.
                 /// The SQL command will be generated at compile time.
                 /// </summary>
@@ -60,8 +68,12 @@ static class SqlCommandHelper
             #nullable enable
 
             using System.Data.Common;
+            using System.Diagnostics;
+            using System.Globalization;
             using System.Runtime.CompilerServices;
+            using System.Text;
             using System.Threading;
+            using SimpleCollabService.Utility;
 
             namespace {{data.Namespace}}
             {
@@ -78,6 +90,8 @@ static class SqlCommandHelper
                     [CompilerGenerated]
                     {{data.MethodVisibility}}{{(data.MethodVisibility is null ? "" : " ")}}static async partial {{data.ResultType ?? "void"}} {{data.MethodName}}({{string.Join(", ", data.Parameters.Select(p => $"{(data.ReturnsAsyncEnumerable && p.Type == KnownTypeNames.CancellationToken ? "[EnumeratorCancellation] " : "")}{p.Type} {p.Name}"))}})
                     {
+                        ILogger logger = {{data.DbConnectionParameter}}.GetServiceProvider().GetRequiredService<ILogger<SimpleCollab.CodeAnalysis.SqlGenerator.Queries>>();
+
                         DbCommand command = {{data.DbConnectionParameter}}.CreateCommand();
                         command.CommandText = {{"\"\"\""}}
                             {{data.Sql.ReplaceNewLines('\n' + """
@@ -96,44 +110,95 @@ static class SqlCommandHelper
                         // Connection
                         await {{data.DbConnectionParameter}}.OpenAsync(cancellationToken);
 
-                        // Query/Command
-            {{(data switch {
-                { IsQuery: true, ReturnsAsyncEnumerable: true } => $$"""
-                        using (DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
+                        long startTimestamp = Stopwatch.GetTimestamp();
+                        if (logger.IsEnabled(LogLevel.Debug))
                         {
-                            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                            StringBuilder? parametersSb = null;
+                            if (command.Parameters.Count > 0)
                             {
-                                // Result
-            {{(IsSimpleType(data.ResultTypeInner!) ? $$"""
-                                yield return reader.{{GetSimpleTypeReader(data.ResultTypeInner!)}}({{0}});
+                                parametersSb = new(" with parameters [");
+                                foreach (DbParameter param in command.Parameters)
+                                {
+                                    if (parametersSb.Length > " with parameters [".Length)
+                                        parametersSb.Append(",");
+
+                                    parametersSb.AppendFormat(CultureInfo.InvariantCulture, " ${0}: {1}", param.ParameterName, param.Value);
+                                }
+                                parametersSb.Append(" ]");
+                            }
+
+                            logger.LogDebug("Executing SQL commmand/query{Parameters}:\n{Command}", parametersSb, command.CommandText);
+                        }
+
+                        try
+                        {
+                            // Query/Command
+            {{(data switch
+        {
+            { IsQuery: true, ReturnsAsyncEnumerable: true } => $$"""
+                            using (DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
+                            {
+                                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                                {
+                                    // Result
+            {{(IsSimpleType(data.ResultTypeInner!, out string? reader) ? $$"""
+                                    yield return reader.{{reader}}({{0}});
             """ : $$"""
-                                yield return new {{data.ResultTypeInner}}() {{{string.Join("", data.ResultFields.Select((f, i) => $$"""
-                                    {{f.Name}} = reader.{{GetSimpleTypeReader(f.Type)}}({{i}}),
+                                    yield return new {{data.ResultTypeInner}}() {{{string.Join("", data.ResultFields.Select((f, i) => $$"""
+                                        {{f.Name}} = reader.{{GetSimpleTypeReader(f.Type)}}({{i}}),
             """))}}
-                                };
+                                    };
             """)}}
+                                }
+                            }
+            """,
+            { IsQuery: true, ReturnsAsyncEnumerable: false } => $$"""
+                            object? result = await command.ExecuteScalarAsync(cancellationToken);
+                            return ReferenceEquals(result, null) ? default! : ({{data.ResultTypeInner}})Convert.ChangeType(result!, typeof({{(data.ResultTypeInnerIsReferenceType ? data.ResultTypeInner?.TrimEnd('?') : data.ResultTypeInner)}}));
+            """,
+            { IsQuery: false } => $$"""
+                            {{(data.ResultTypeInner is null ? "" : "return ")}}await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            """
+        })}}
+                        }
+                        finally
+                        {
+                            if (logger.IsEnabled(LogLevel.Debug))
+                            {
+                                TimeSpan duration = Stopwatch.GetElapsedTime(startTimestamp);
+                                logger.LogDebug("Elapsed time: {Duration}", duration);
                             }
                         }
-            """,
-                { IsQuery: true, ReturnsAsyncEnumerable: false } => $$"""
-                        object? result = await command.ExecuteScalarAsync(cancellationToken);
-                        return ReferenceEquals(result, null) ? default : ({{data.ResultTypeInner}})Convert.ChangeType(result!, typeof({{(data.ResultTypeInnerIsReferenceType ? data.ResultTypeInner?.TrimEnd('?') : data.ResultTypeInner)}}));
-            """,
-                { IsQuery: false } => $$"""
-                        {{(data.ResultTypeInner is null ? "" : "return ")}}await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-            """})}}
                     }
                 }
             }
             
             """.ReplaceNewLines();
 
-    static bool IsSimpleType(string type) => type is "string";
+    static bool IsSimpleType(string type, out string reader) =>
+        (
+            reader = type switch
+            {
+                "bool" => "GetBoolean",
+                "byte" => "GetByte",
+                "char" => "GetChar",
+                "DateTime" => "GetDateTime",
+                "decimal" => "GetDecimal",
+                "double" => "GetDouble",
+                "float" => "GetFloat",
+                "Guid" => "GetGuid",
+                "short" => "GetInt16",
+                "int" => "GetInt32",
+                "long" => "GetInt64",
+                "string" => "GetString",
+                "Stream" => "GetStream",
+                "TextReader" => "GetTextReader",
+                "object" => "GetValue",
+                _ => "",
+            }
+        )
+            is not "";
 
     static string GetSimpleTypeReader(string type) =>
-        type switch
-        {
-            "string" => "GetString",
-            _ => throw new NotSupportedException(),
-        };
+        IsSimpleType(type, out string? reader) ? reader : throw new NotSupportedException();
 }

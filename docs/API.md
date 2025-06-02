@@ -56,9 +56,13 @@ Content-Type: application/json
 </details>
 
 
-## Create Identity
+## Register Identity
 
-Create a new anonymous identity.
+Register a new anonymous identity.
+
+The server may decide to delete anonymous identities at any time, but they are
+guaranteed to be kept alive for at least 5 minutes. Associate an identity with a
+server user to persist it.
 
 ### Endpoint
 
@@ -121,9 +125,10 @@ Content-Type: application/json
 #### Error
 
 **Body:**
-Field | Type   | Description
-------|--------|----------------------------------------------------------------
-error | string | Error code.
+Field       | Type   | Description
+------------|--------|----------------------------------------------------------
+error       | string | Error code.
+description | string | Human-readable description of the error (optional).
 
 **Possible Error Codes:**
 Status | Error Code         | Description
@@ -202,9 +207,10 @@ Content-Type: application/json
 #### Error
 
 **Body:**
-Field | Type   | Description
-------|--------|----------------------------------------------------------------
-error | string | Error code.
+Field       | Type   | Description
+------------|--------|----------------------------------------------------------
+error       | string | Error code.
+description | string | Human-readable description of the error (optional).
 
 **Possible Error Codes:**
 Status | Error Code        | Description
@@ -226,9 +232,9 @@ Content-Type: application/json
 </details>
 
 
-## Create User
+## Register User
 
-Register a new user with a username, using a previously created identity.
+Register a new user with a username, using a previously registered identity.
 
 ### Endpoint
 
@@ -286,24 +292,26 @@ Content-Type: application/json
 #### Error
 
 **Body:**
-Field | Type   | Description
-------|--------|----------------------------------------------------------------
-error | string | Error code.
+Field       | Type   | Description
+------------|--------|----------------------------------------------------------
+error       | string | Error code.
+description | string | Human-readable description of the error (optional).
 
 **Possible Error Codes:**
-Status | Error Code           | Description
--------|----------------------|-------------------------------------------------
-400    | malformed_request    | Request body is not valid JSON.
-400    | timestamp_missing    | Timestamp field missing.
-400    | identity_missing     | Identity hash field missing.
-400    | username_missing     | Username field missing.
-400    | signature_missing    | Signature field missing.
-400    | timestamp_invalid    | Timestamp is not a valid UNIX timestamp.
-400    | username_invalid     | Username does not meet requirements.
-400    | signature_invalid    | Signature does not match.
-403    | registrations_closed | This server does not allow to create new users.
-404    | unknown_identity     | Identity hash not found.
-409    | username_taken       | Username already in use.
+Status | Error Code              | Description
+-------|-------------------------|----------------------------------------------
+400    | malformed_request       | Request body is not valid JSON.
+400    | timestamp_missing       | Timestamp field missing.
+400    | identity_missing        | Identity hash field missing.
+400    | username_missing        | Username field missing.
+400    | signature_missing       | Signature field missing.
+400    | timestamp_invalid       | Timestamp is not a valid UNIX timestamp.
+400    | username_invalid        | Username does not meet requirements.
+400    | signature_invalid       | Signature does not match.
+403    | registrations_closed    | This server does not allow to create new users.
+404    | unknown_identity        | Identity hash not found.
+409    | username_already_taken  | Username already in use.
+409    | identity_already_paired | Identity already paired with another username.
 
 <details>
 <summary>Example Response</summary>
@@ -390,9 +398,10 @@ Content-Type: application/json
 #### Error
 
 **Body:**
-Field | Type   | Description
-------|--------|----------------------------------------------------------------
-error | string | Error code.
+Field       | Type   | Description
+------------|--------|----------------------------------------------------------
+error       | string | Error code.
+description | string | Human-readable description of the error (optional).
 
 **Possible Error Codes:**
 Status | Error Code        | Description
@@ -483,9 +492,10 @@ Content-Type: application/json
 #### Error
 
 **Body:**
-Field | Type   | Description
-------|--------|----------------------------------------------------------------
-error | string | Error code.
+Field       | Type   | Description
+------------|--------|----------------------------------------------------------
+error       | string | Error code.
+description | string | Human-readable description of the error (optional).
 
 **Possible Error Codes:**
 Status | Error Code               | Description
@@ -579,9 +589,10 @@ Content-Type: application/json
 #### Error
 
 **Body:**
-Field | Type   | Description
-------|--------|----------------------------------------------------------------
-error | string | Error code.
+Field       | Type   | Description
+------------|--------|----------------------------------------------------------
+error       | string | Error code.
+description | string | Human-readable description of the error (optional).
 
 **Possible Error Codes:**
 Status | Error Code              | Description
@@ -751,9 +762,10 @@ Content-Type: application/json
 #### Error
 
 **Body:**
-Field | Type   | Description
-------|--------|----------------------------------------------------------------
-error | string | Error code.
+Field       | Type   | Description
+------------|--------|----------------------------------------------------------
+error       | string | Error code.
+description | string | Human-readable description of the error (optional).
 
 **Possible Error Codes:**
 Status | Error Code                | Description
@@ -876,9 +888,10 @@ Hello, World!
 Errors are always in JSON format.
 
 **Body:**
-Field | Type   | Description
-------|--------|----------------------------------------------------------------
-error | string | Error code.
+Field       | Type   | Description
+------------|--------|----------------------------------------------------------
+error       | string | Error code.
+description | string | Human-readable description of the error (optional).
 
 **Possible Error Codes:**
 Status | Error Code        | Description
@@ -970,9 +983,10 @@ Content-Type: application/json
 #### Error
 
 **Body:**
-Field | Type   | Description
-------|--------|----------------------------------------------------------------
-error | string | Error code.
+Field       | Type   | Description
+------------|--------|----------------------------------------------------------
+error       | string | Error code.
+description | string | Human-readable description of the error (optional).
 
 **Possible Error Codes:**
 Status | Error Code               | Description
@@ -1074,9 +1088,10 @@ Content-Type: application/json
 #### Error
 
 **Body:**
-Field | Type   | Description
-------|--------|----------------------------------------------------------------
-error | string | Error code.
+Field       | Type   | Description
+------------|--------|----------------------------------------------------------
+error       | string | Error code.
+description | string | Human-readable description of the error (optional).
 
 **Possible Error Codes:**
 Status | Error Code        | Description
@@ -1325,9 +1340,10 @@ Content-Type: application/json
 #### Error
 
 **Body:**
-Field | Type   | Description
-------|--------|----------------------------------------------------------------
-error | string | Error code.
+Field       | Type   | Description
+------------|--------|----------------------------------------------------------
+error       | string | Error code.
+description | string | Human-readable description of the error (optional).
 
 **Possible Error Codes:**
 Status | Error Code        | Description
@@ -1432,9 +1448,10 @@ Content-Type: application/json
 #### Error
 
 **Body:**
-Field | Type   | Description
-------|--------|----------------------------------------------------------------
-error | string | Error code.
+Field       | Type   | Description
+------------|--------|----------------------------------------------------------
+error       | string | Error code.
+description | string | Human-readable description of the error (optional).
 
 **Possible Error Codes:**
 Status | Error Code        | Description
@@ -1540,9 +1557,10 @@ Content-Type: application/json
 #### Error
 
 **Body:**
-Field | Type   | Description
-------|--------|----------------------------------------------------------------
-error | string | Error code.
+Field       | Type   | Description
+------------|--------|----------------------------------------------------------
+error       | string | Error code.
+description | string | Human-readable description of the error (optional).
 
 **Possible Error Codes:**
 Status | Error Code        | Description

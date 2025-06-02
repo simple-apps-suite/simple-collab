@@ -43,4 +43,74 @@ static partial class SqliteQueries
         byte[] hash,
         CancellationToken cancellationToken = default
     );
+
+    [SqlQuery("SELECT 1 FROM identities WHERE hash = $hash LIMIT 1")]
+    public static partial Task<bool> IdentityExistsAsync(
+        SqliteConnection connection,
+        byte[] hash,
+        CancellationToken cancellationToken = default
+    );
+
+    [SqlQuery("SELECT 1 FROM users WHERE username = $username COLLATE NOCASE LIMIT 1")]
+    public static partial Task<bool> UsernameExistsAsync(
+        SqliteConnection connection,
+        string username,
+        CancellationToken cancellationToken = default
+    );
+
+    [SqlCommand(
+        """
+            INSERT INTO users (username) VALUES ($username)
+            WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = $username)
+            """
+    )]
+    public static partial Task<long> InsertUserIfNotExistsAsync(
+        SqliteConnection connection,
+        string username,
+        CancellationToken cancellationToken = default
+    );
+
+    [SqlQuery("SELECT id FROM users WHERE username = $username COLLATE NOCASE LIMIT 1")]
+    public static partial Task<long?> GetUserIdByUsernameAsync(
+        SqliteConnection connection,
+        string username,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
+    /// Associate identity to user if the identity is not already associated
+    /// withanother user, and there are no other identities associated with
+    /// this user.
+    /// </summary>
+    [SqlQuery(
+        """
+            WITH usr(id) AS (SELECT id FROM users WHERE username = $username)
+            UPDATE identities
+            SET user_id = (SELECT id FROM usr)
+            WHERE hash = $identity_hash
+              AND (user_id IS NULL OR user_id = (SELECT id FROM usr)) -- NO other user for the identity.
+              AND NOT EXISTS (SELECT 1 FROM identities AS i INNER JOIN users AS u ON i.user_id = u.id AND hash <> $identity_hash) -- No other identity for the user.
+            RETURNING 1;
+            """
+    )]
+    public static partial Task<bool> AssociateIdentityToUserAsync(
+        SqliteConnection connection,
+        string username,
+        byte[] identity_hash,
+        CancellationToken cancellationToken = default
+    );
+
+    [SqlQuery(
+        """
+            SELECT u.username
+            FROM identities AS i
+            LEFT JOIN users AS u ON i.user_id = u.id
+            WHERE i.hash = $identity_hash AND i.user_id IS NOT NULL
+            """
+    )]
+    public static partial Task<string> GetIdentityUsernameAsync(
+        SqliteConnection connection,
+        byte[] identity_hash,
+        CancellationToken cancellationToken = default
+    );
 }

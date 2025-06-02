@@ -13,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Chaos.NaCl\Chaos.NaCl.csproj" />
     <ProjectReference Include="..\SimpleCollab.CodeAnalysis\SimpleCollab.CodeAnalysis.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 

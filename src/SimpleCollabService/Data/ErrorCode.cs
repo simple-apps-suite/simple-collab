@@ -31,6 +31,15 @@ enum ErrorCode
     [EnumMember(Value = "pow_missing")]
     MissingProofOfWork,
 
+    [EnumMember(Value = "identity_missing")]
+    MissingIdentity,
+
+    [EnumMember(Value = "username_missing")]
+    MissingUsername,
+
+    [EnumMember(Value = "signature_missing")]
+    MissingSignature,
+
     [EnumMember(Value = "timestamp_invalid")]
     InvalidTimestamp,
 
@@ -43,6 +52,21 @@ enum ErrorCode
     [EnumMember(Value = "hash_invalid")]
     InvalidHash,
 
+    [EnumMember(Value = "identity_invalid")]
+    InvalidIdentity,
+
+    [EnumMember(Value = "username_invalid")]
+    InvalidUsername,
+
+    [EnumMember(Value = "signature_invalid")]
+    InvalidSignature,
+
     [EnumMember(Value = "unknown_identity")]
     UnknownIdentity,
+
+    [EnumMember(Value = "username_already_taken")]
+    UsernameAlreadyTaken,
+
+    [EnumMember(Value = "identity_already_paired")]
+    IdentityAlreadyPaired,
 }

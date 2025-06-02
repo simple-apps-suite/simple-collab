@@ -1,6 +1,7 @@
 ﻿// SPDX-FileCopyrightText: Copyright 2025 Fabio Iotti
 // SPDX-License-Identifier: AGPL-3.0-only
 
+using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
@@ -9,6 +10,7 @@ using SimpleCollabService.Endpoints;
 using SimpleCollabService.Repository;
 using SimpleCollabService.Repository.Abstractions;
 using SimpleCollabService.Repository.Sqlite;
+using SimpleCollabService.Utility;
 
 WebApplicationBuilder builder = WebApplication.CreateSlimBuilder(args);
 
@@ -18,7 +20,9 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.TypeInfoResolverChain.Add(AppJsonSerializerContext.Default);
 });
 
-builder.Services.AddTransient<SqliteConnection>(_ => new("Data Source=data.db"));
+builder.Services.AddTransient(services =>
+    new SqliteConnection("Data Source=data.db").WithServiceProvider(services)
+);
 
 builder.Services.AddTransient<ISimpleCollabRepository, SqliteRepository>();
 
@@ -26,43 +30,41 @@ builder.Services.AddHostedService<MigrationService>();
 
 WebApplication app = builder.Build();
 
+app.UseExceptionHandler(app => app.Run(ExampleEndpoints.HandleExceptionAsync));
+
 RouteGroupBuilder api = app.MapGroup("/api");
 RouteGroupBuilder v1 = api.MapGroup("/v1");
 v1.MapGet("/server/info", ExampleEndpoints.GetServerInfo);
-v1.MapPost("/identity", ExampleEndpoints.CreateIdentityAsync);
+v1.MapPost("/identity", ExampleEndpoints.RegisterIdentityAsync);
 v1.MapGet("/identity/{hash}", ExampleEndpoints.ReadIdentityAsync);
+v1.MapPost("/user", ExampleEndpoints.RegisterUserAsync);
 v1.MapFallback(ExampleEndpoints.InvalidApiEndpoint);
-v1.AddEndpointFilter<ExceptionFilter>();
 
 await app.RunAsync();
 
 [JsonSerializable(typeof(CreateIdentityRequest))]
 [JsonSerializable(typeof(CreateIdentityResponse))]
+[JsonSerializable(typeof(CreateUserRequest))]
+[JsonSerializable(typeof(CreateUserResponse))]
 [JsonSerializable(typeof(ErrorCode))]
 [JsonSerializable(typeof(ErrorResponse))]
 [JsonSerializable(typeof(IdentityResponse))]
 [JsonSerializable(typeof(ServerInfoResponse))]
 partial class AppJsonSerializerContext : JsonSerializerContext;
 
-class ExceptionFilter : IEndpointFilter
+class ServiceProviderComponent(IServiceProvider services) : IComponent
 {
-    public async ValueTask<object?> InvokeAsync(
-        EndpointFilterInvocationContext context,
-        EndpointFilterDelegate next
-    )
-    {
-        try
-        {
-            return await next(context);
-        }
-        catch (Exception ex)
-        {
-            ILogger logger = context.HttpContext.RequestServices.GetRequiredService<
-                ILogger<ExceptionFilter>
-            >();
-            logger.LogError(ex, "Unhandled exception.");
+    EventHandler? _disposed;
 
-            return Results.InternalServerError<ErrorResponse>(new(ErrorCode.UnexpectedError));
-        }
+    public IServiceProvider ServiceProvider => services;
+
+    ISite? IComponent.Site { get; set; }
+
+    event EventHandler? IComponent.Disposed
+    {
+        add => _disposed += value;
+        remove => _disposed -= value;
     }
+
+    void IDisposable.Dispose() => _disposed?.Invoke(this, EventArgs.Empty);
 }
