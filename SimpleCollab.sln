@@ -9,6 +9,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleCollab.CodeAnalysis", "src\SimpleCollab.CodeAnalysis\SimpleCollab.CodeAnalysis.csproj", "{F8C633A3-99BA-40DA-B950-78218CCEBFFD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chaos.NaCl", "src\Chaos.NaCl\Chaos.NaCl.csproj", "{AE28FD14-7985-4707-A963-C94B8597AE50}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,11 +45,24 @@ Global
 		{F8C633A3-99BA-40DA-B950-78218CCEBFFD}.Release|x64.Build.0 = Release|Any CPU
 		{F8C633A3-99BA-40DA-B950-78218CCEBFFD}.Release|x86.ActiveCfg = Release|Any CPU
 		{F8C633A3-99BA-40DA-B950-78218CCEBFFD}.Release|x86.Build.0 = Release|Any CPU
+		{AE28FD14-7985-4707-A963-C94B8597AE50}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE28FD14-7985-4707-A963-C94B8597AE50}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE28FD14-7985-4707-A963-C94B8597AE50}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{AE28FD14-7985-4707-A963-C94B8597AE50}.Debug|x64.Build.0 = Debug|Any CPU
+		{AE28FD14-7985-4707-A963-C94B8597AE50}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{AE28FD14-7985-4707-A963-C94B8597AE50}.Debug|x86.Build.0 = Debug|Any CPU
+		{AE28FD14-7985-4707-A963-C94B8597AE50}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE28FD14-7985-4707-A963-C94B8597AE50}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE28FD14-7985-4707-A963-C94B8597AE50}.Release|x64.ActiveCfg = Release|Any CPU
+		{AE28FD14-7985-4707-A963-C94B8597AE50}.Release|x64.Build.0 = Release|Any CPU
+		{AE28FD14-7985-4707-A963-C94B8597AE50}.Release|x86.ActiveCfg = Release|Any CPU
+		{AE28FD14-7985-4707-A963-C94B8597AE50}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{F8C633A3-99BA-40DA-B950-78218CCEBFFD} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{AE28FD14-7985-4707-A963-C94B8597AE50} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

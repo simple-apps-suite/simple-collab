@@ -1,0 +1,4 @@
+[submodule "ChaosNaCl"]
+	path = thirdparty/ChaosNaCl
+	url = https://git.fabioiotti.com/simple-apps/Chaos.NaCl.git
+	shallow = true
