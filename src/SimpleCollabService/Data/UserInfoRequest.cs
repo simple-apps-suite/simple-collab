@@ -5,8 +5,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace SimpleCollabService.Data;
 
-record CreateIdentityRequest(
+record UserInfoRequest(
     [property: Required] long Timestamp,
-    [property: Required] string PublicKey,
-    [property: Required] string Pow
+    [property: Required] string Username,
+    [property: Required] string Identity,
+    [property: Required] string Signature
 );

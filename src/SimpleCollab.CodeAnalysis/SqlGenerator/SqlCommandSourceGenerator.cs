@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2025 Fabio Iotti
 // SPDX-License-Identifier: AGPL-3.0-only
 
+using System.Collections.Immutable;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
@@ -89,6 +90,34 @@ class SqlCommandSourceGenerator : IIncrementalGenerator
             returnTypeInner = namedTypeSymbol.TypeArguments.FirstOrDefault();
         }
 
+        (string Name, string Type, bool Constructor)[] resultFields = [];
+        if (returnTypeInner?.IsRecord ?? false)
+        {
+            ImmutableArray<IParameterSymbol> constructorParameters = returnTypeInner
+                .GetMembers(".ctor")
+                .OfType<IMethodSymbol>()
+                .FirstOrDefault()
+                .Parameters;
+
+            IEnumerable<(string Name, string Type, bool Constructor)> fieldsFromConstructor =
+                constructorParameters.Select(p => (p.Name, p.Type.ToDisplayString(), true));
+
+            IEnumerable<(string Name, string Type, bool Constructor)> fieldsFromProperties =
+                returnTypeInner
+                    .GetMembers()
+                    .OfType<IPropertySymbol>()
+                    .Where(p =>
+                        p is { GetMethod: not null, SetMethod: not null }
+                        && !constructorParameters.Any(p2 =>
+                            p2.Name == p.Name
+                            && SymbolEqualityComparer.Default.Equals(p2.Type, p.Type)
+                        )
+                    )
+                    .Select(p => (p.Name, p.Type.ToDisplayString(), false));
+
+            resultFields = [.. fieldsFromConstructor, .. fieldsFromProperties];
+        }
+
         return new SqlCommandData(
             isQuery,
             returnsAsyncEnumerable,
@@ -115,7 +144,7 @@ class SqlCommandSourceGenerator : IIncrementalGenerator
                 ]
             ),
             methodSymbol.Parameters.First(p => IsDbConnection(p.Type)).Name,
-            new([])
+            new(resultFields)
         );
     }
 

@@ -3,4 +3,4 @@
 
 namespace SimpleCollabService.Data;
 
-record CreateIdentityResponse(string Hash);
+record RegisterUserResponse();

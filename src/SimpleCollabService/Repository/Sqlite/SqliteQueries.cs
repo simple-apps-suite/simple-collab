@@ -3,6 +3,7 @@
 
 using Microsoft.Data.Sqlite;
 using SimpleCollab.CodeAnalysis.SqlGenerator;
+using SimpleCollabService.Repository.Sqlite.Data;
 
 namespace SimpleCollabService.Repository.Sqlite;
 
@@ -88,7 +89,7 @@ static partial class SqliteQueries
             UPDATE identities
             SET user_id = (SELECT id FROM usr)
             WHERE hash = $identity_hash
-              AND (user_id IS NULL OR user_id = (SELECT id FROM usr)) -- NO other user for the identity.
+              AND (user_id IS NULL OR user_id = (SELECT id FROM usr)) -- No other user for the identity.
               AND NOT EXISTS (SELECT 1 FROM identities AS i INNER JOIN users AS u ON i.user_id = u.id AND hash <> $identity_hash) -- No other identity for the user.
             RETURNING 1;
             """
@@ -109,6 +110,22 @@ static partial class SqliteQueries
             """
     )]
     public static partial Task<string> GetIdentityUsernameAsync(
+        SqliteConnection connection,
+        byte[] identity_hash,
+        CancellationToken cancellationToken = default
+    );
+
+    [SqlQuery(
+        """
+            -- TODO
+            SELECT u.username, 123456789, 123456789
+            FROM identities AS i
+            LEFT JOIN users AS u ON i.user_id = u.id
+            WHERE i.hash = $identity_hash AND i.user_id IS NOT NULL
+            LIMIT 1
+            """
+    )]
+    public static partial Task<UserInfo> GetUserInfo(
         SqliteConnection connection,
         byte[] identity_hash,
         CancellationToken cancellationToken = default

@@ -20,9 +20,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.TypeInfoResolverChain.Add(AppJsonSerializerContext.Default);
 });
 
-builder.Services.AddTransient(services =>
-    new SqliteConnection("Data Source=data.db").WithServiceProvider(services)
-);
+builder.Services.AddTransient(services => new SqliteConnection("Data Source=data.db").WithServiceProvider(services));
 
 builder.Services.AddTransient<ISimpleCollabRepository, SqliteRepository>();
 
@@ -34,22 +32,25 @@ app.UseExceptionHandler(app => app.Run(ExampleEndpoints.HandleExceptionAsync));
 
 RouteGroupBuilder api = app.MapGroup("/api");
 RouteGroupBuilder v1 = api.MapGroup("/v1");
-v1.MapGet("/server/info", ExampleEndpoints.GetServerInfo);
+v1.MapGet("/server/info", ExampleEndpoints.ServerInfo);
 v1.MapPost("/identity", ExampleEndpoints.RegisterIdentityAsync);
-v1.MapGet("/identity/{hash}", ExampleEndpoints.ReadIdentityAsync);
+v1.MapGet("/identity/{hash}", ExampleEndpoints.IdentityAsync);
 v1.MapPost("/user", ExampleEndpoints.RegisterUserAsync);
+v1.MapPost("/user/info", ExampleEndpoints.UserInfoAsync);
 v1.MapFallback(ExampleEndpoints.InvalidApiEndpoint);
 
 await app.RunAsync();
 
-[JsonSerializable(typeof(CreateIdentityRequest))]
-[JsonSerializable(typeof(CreateIdentityResponse))]
-[JsonSerializable(typeof(CreateUserRequest))]
-[JsonSerializable(typeof(CreateUserResponse))]
 [JsonSerializable(typeof(ErrorCode))]
 [JsonSerializable(typeof(ErrorResponse))]
 [JsonSerializable(typeof(IdentityResponse))]
+[JsonSerializable(typeof(RegisterIdentityRequest))]
+[JsonSerializable(typeof(RegisterIdentityResponse))]
+[JsonSerializable(typeof(RegisterUserRequest))]
+[JsonSerializable(typeof(RegisterUserResponse))]
 [JsonSerializable(typeof(ServerInfoResponse))]
+[JsonSerializable(typeof(UserInfoRequest))]
+[JsonSerializable(typeof(UserInfoResponse))]
 partial class AppJsonSerializerContext : JsonSerializerContext;
 
 class ServiceProviderComponent(IServiceProvider services) : IComponent

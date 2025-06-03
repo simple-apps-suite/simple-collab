@@ -414,17 +414,16 @@ Status | Error Code        | Description
 400    | timestamp_invalid | Timestamp is not a valid UNIX timestamp.
 400    | identity_invalid  | Identity not valid for this user.
 400    | signature_invalid | Signature does not match.
-404    | unknown_user      | Username not found.
 
 <details>
 <summary>Example Response</summary>
 
 ```json
-HTTP/1.1 404 Not Found
+HTTP/1.1 400 Bad Request
 Content-Type: application/json
 
 {
-  "error": "unknown_user"
+  "error": "signature_invalid"
 }
 ```
 </details>

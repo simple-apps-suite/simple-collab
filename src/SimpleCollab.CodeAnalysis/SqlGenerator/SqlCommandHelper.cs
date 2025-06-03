@@ -7,11 +7,9 @@ namespace SimpleCollab.CodeAnalysis.SqlGenerator;
 
 static class SqlCommandHelper
 {
-    public const string SqlQueryAttributeFullName =
-        "SimpleCollab.CodeAnalysis.SqlGenerator.SqlQueryAttribute";
+    public const string SqlQueryAttributeFullName = "SimpleCollab.CodeAnalysis.SqlGenerator.SqlQueryAttribute";
 
-    public const string SqlCommandAttributeFullName =
-        "SimpleCollab.CodeAnalysis.SqlGenerator.SqlCommandAttribute";
+    public const string SqlCommandAttributeFullName = "SimpleCollab.CodeAnalysis.SqlGenerator.SqlCommandAttribute";
 
     public static string AttributesSource { get; } =
         """
@@ -135,28 +133,37 @@ static class SqlCommandHelper
                             // Query/Command
             {{(data switch
         {
-            { IsQuery: true, ReturnsAsyncEnumerable: true } => $$"""
+            { IsQuery: true, ReturnsAsyncEnumerable: false, ResultFields.Count: 0 } => $$"""
+                            object? result = await command.ExecuteScalarAsync(cancellationToken);
+                            return ReferenceEquals(result, null) ? default! : ({{data.ResultTypeInner}})Convert.ChangeType(result!, typeof({{(data.ResultTypeInnerIsReferenceType ? data.ResultTypeInner?.TrimEnd('?') : data.ResultTypeInner)}}));
+            """,
+            { IsQuery: true } => $$"""
                             using (DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
                             {
                                 while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                                 {
                                     // Result
             {{(IsSimpleType(data.ResultTypeInner!, out string? reader) ? $$"""
-                                    yield return reader.{{reader}}({{0}});
+                                    {{(data.ReturnsAsyncEnumerable ? "yield " : "")}}return reader.{{reader}}({{0}});
             """ : $$"""
-                                    yield return new {{data.ResultTypeInner}}() {{{string.Join("", data.ResultFields.Select((f, i) => $$"""
+                                    {{(data.ReturnsAsyncEnumerable ? "yield " : "")}}return new {{data.ResultTypeInner}}({{string.Join(",", data.ResultFields.Select((f, i) => f.Constructor ? $$"""
+
+                                        {{f.Name}}: reader.{{GetSimpleTypeReader(f.Type)}}({{i}})
+            """ : null).Where(x => x is not null))}}
+                                    ) {{{string.Join("", data.ResultFields.Select((f, i) => f.Constructor ? null : $$"""
+
                                         {{f.Name}} = reader.{{GetSimpleTypeReader(f.Type)}}({{i}}),
-            """))}}
+            """).Where(x => x is not null))}}
                                     };
             """)}}
                                 }
-                            }
+                            }{{(data.ReturnsAsyncEnumerable ? "" : """
+
+
+                            return default!;
+            """)}}
             """,
-            { IsQuery: true, ReturnsAsyncEnumerable: false } => $$"""
-                            object? result = await command.ExecuteScalarAsync(cancellationToken);
-                            return ReferenceEquals(result, null) ? default! : ({{data.ResultTypeInner}})Convert.ChangeType(result!, typeof({{(data.ResultTypeInnerIsReferenceType ? data.ResultTypeInner?.TrimEnd('?') : data.ResultTypeInner)}}));
-            """,
-            { IsQuery: false } => $$"""
+            _ => $$"""
                             {{(data.ResultTypeInner is null ? "" : "return ")}}await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             """
         })}}
