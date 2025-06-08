@@ -7,17 +7,7 @@ static class ErrorMessage
 {
     public const string GenericServerError = "Something went wrong with the server.";
 
-    public const string MissingTimestamp = "The required field field 'timestamp' is missing.";
-
-    public const string MissingPublicKey = "The required field field 'public_key' is missing.";
-
-    public const string MissingProofOfWork = "The required field field 'pow' is missing.";
-
-    public const string MissingIdentity = "The required field field 'identity' is missing.";
-
-    public const string MissingUsername = "The required field field 'username' is missing.";
-
-    public const string MissingSignature = "The required field 'signature' is missing.";
+    public const string RequiredFieldMissing = "The required field field '{0}' is missing.";
 
     public const string UsernameNotValid =
         "Usernames must be between 6 and 40 characters long and may only contain alphanumeric characters or underscores.";

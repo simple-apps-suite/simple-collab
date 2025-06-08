@@ -13,6 +13,7 @@ readonly record struct SqlCommandData(
     string TypeName,
     string? MethodVisibility,
     string MethodName,
+    string? XmlDocumentation,
     string Sql,
     string? ResultType,
     string? ResultTypeInner,

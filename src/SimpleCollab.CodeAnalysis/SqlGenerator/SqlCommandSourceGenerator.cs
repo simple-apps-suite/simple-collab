@@ -39,15 +39,9 @@ class SqlCommandSourceGenerator : IIncrementalGenerator
             )
             .Where(q => q is not null);
 
-        context.RegisterSourceOutput(
-            sqlCommands,
-            static (spc, source) => GenerateSource(source, spc)
-        );
+        context.RegisterSourceOutput(sqlCommands, static (spc, source) => GenerateSource(source, spc));
 
-        context.RegisterSourceOutput(
-            sqlQueries,
-            static (spc, source) => GenerateSource(source, spc)
-        );
+        context.RegisterSourceOutput(sqlQueries, static (spc, source) => GenerateSource(source, spc));
     }
 
     static SqlCommandData? GetData(
@@ -56,10 +50,7 @@ class SqlCommandSourceGenerator : IIncrementalGenerator
         CancellationToken cancellationToken
     )
     {
-        if (
-            semanticModel.GetDeclaredSymbol(syntaxNode, cancellationToken)
-            is not IMethodSymbol methodSymbol
-        )
+        if (semanticModel.GetDeclaredSymbol(syntaxNode, cancellationToken) is not IMethodSymbol methodSymbol)
             return null;
 
         AttributeData? sqlAttribute = methodSymbol
@@ -73,9 +64,7 @@ class SqlCommandSourceGenerator : IIncrementalGenerator
         if (sqlAttribute is null)
             return null;
 
-        bool isQuery =
-            sqlAttribute.AttributeClass?.ToDisplayString()
-            is SqlCommandHelper.SqlQueryAttributeFullName;
+        bool isQuery = sqlAttribute.AttributeClass?.ToDisplayString() is SqlCommandHelper.SqlQueryAttributeFullName;
 
         if (sqlAttribute.ConstructorArguments.FirstOrDefault().Value is not string sqlString)
             return null;
@@ -102,18 +91,16 @@ class SqlCommandSourceGenerator : IIncrementalGenerator
             IEnumerable<(string Name, string Type, bool Constructor)> fieldsFromConstructor =
                 constructorParameters.Select(p => (p.Name, p.Type.ToDisplayString(), true));
 
-            IEnumerable<(string Name, string Type, bool Constructor)> fieldsFromProperties =
-                returnTypeInner
-                    .GetMembers()
-                    .OfType<IPropertySymbol>()
-                    .Where(p =>
-                        p is { GetMethod: not null, SetMethod: not null }
-                        && !constructorParameters.Any(p2 =>
-                            p2.Name == p.Name
-                            && SymbolEqualityComparer.Default.Equals(p2.Type, p.Type)
-                        )
+            IEnumerable<(string Name, string Type, bool Constructor)> fieldsFromProperties = returnTypeInner
+                .GetMembers()
+                .OfType<IPropertySymbol>()
+                .Where(p =>
+                    p is { GetMethod: not null, SetMethod: not null }
+                    && !constructorParameters.Any(p2 =>
+                        p2.Name == p.Name && SymbolEqualityComparer.Default.Equals(p2.Type, p.Type)
                     )
-                    .Select(p => (p.Name, p.Type.ToDisplayString(), false));
+                )
+                .Select(p => (p.Name, p.Type.ToDisplayString(), false));
 
             resultFields = [.. fieldsFromConstructor, .. fieldsFromProperties];
         }
@@ -126,6 +113,7 @@ class SqlCommandSourceGenerator : IIncrementalGenerator
             methodSymbol.ContainingType.Name,
             methodSymbol.DeclaredAccessibility.ToCSharpAccessibilityModifier(),
             methodSymbol.Name,
+            methodSymbol.GetDocumentationCommentXml(),
             sqlString,
             methodSymbol.ReturnType.ToDisplayString(),
             returnTypeInner?.ToDisplayString(),
@@ -136,9 +124,7 @@ class SqlCommandSourceGenerator : IIncrementalGenerator
                         (
                             p.Name,
                             p.Type.ToDisplayString(),
-                            new EquatableArray<int>(
-                                p.Name is "connection" or "cancellationToken" ? [] : [0]
-                            ) // TODO
+                            new EquatableArray<int>(p.Name is "connection" or "cancellationToken" ? [] : [0]) // TODO
                         )
                     ),
                 ]

@@ -134,10 +134,8 @@ description | string | Human-readable description of the error (optional).
 Status | Error Code         | Description
 -------|--------------------|---------------------------------------------------
 400    | malformed_request  | Request body is not valid JSON.
-400    | public_key_missing | Public key field missing.
-400    | timestamp_missing  | Timestamp field missing.
-400    | pow_missing        | Proof-of-work field missing.
-400    | timestamp_invalid  | Timestamp is not a valid UNIX timestamp.
+400    | missing_field      | Required field missing.
+400    | timestamp_invalid  | Timestamp is too far from current time.
 400    | public_key_invalid | Public key not valid.
 400    | pow_invalid        | Proof-of-work not valid.
 
@@ -301,11 +299,8 @@ description | string | Human-readable description of the error (optional).
 Status | Error Code              | Description
 -------|-------------------------|----------------------------------------------
 400    | malformed_request       | Request body is not valid JSON.
-400    | timestamp_missing       | Timestamp field missing.
-400    | identity_missing        | Identity hash field missing.
-400    | username_missing        | Username field missing.
-400    | signature_missing       | Signature field missing.
-400    | timestamp_invalid       | Timestamp is not a valid UNIX timestamp.
+400    | missing_field           | Required field missing.
+400    | timestamp_invalid       | Timestamp is too far from current time.
 400    | username_invalid        | Username does not meet requirements.
 400    | signature_invalid       | Signature does not match.
 403    | registrations_closed    | This server does not allow to create new users.
@@ -407,11 +402,8 @@ description | string | Human-readable description of the error (optional).
 Status | Error Code        | Description
 -------|-------------------|----------------------------------------------------
 400    | malformed_request | Request body is not valid JSON.
-400    | timestamp_missing | Timestamp field missing.
-400    | username_missing  | Username field missing.
-400    | identity_missing  | Identity field missing.
-400    | signature_missing | Signature field missing.
-400    | timestamp_invalid | Timestamp is not a valid UNIX timestamp.
+400    | missing_field     | Required field missing.
+400    | timestamp_invalid | Timestamp is too far from current time.
 400    | identity_invalid  | Identity not valid for this user.
 400    | signature_invalid | Signature does not match.
 
@@ -429,7 +421,7 @@ Content-Type: application/json
 </details>
 
 
-## Associate Identity to User
+## Link Identity to User
 
 Associate a previously created identity to an existing user.
 
@@ -441,21 +433,26 @@ POST /api/v1/user/identity
 
 ### Request
 
-Field            | Type    | Description
------------------|---------|----------------------------------------------------
-timestamp        | integer | Current UNIX timestamp in seconds.
-current_identity | string  | Hash in base64url format of an identity already associated with the user.
-new_identity     | string  | Hash in base64url format of the new identity to associate.
-username         | string  | User to associate with.
-signature        | string  | `sign("ADD_IDENTITY " + base64url(sha256(base64url(sha256(username)) + new_identity)) + " " + timestamp, private_key(current_identity))`
+Field             | Type    | Description
+------------------|---------|---------------------------------------------------
+timestamp         | integer | Current UNIX timestamp in seconds.
+current_identity  | string  | Hash in base64url format of an identity already associated with the user.
+new_identity      | string  | Hash in base64url format of the new identity to associate.
+username          | string  | User to associate with.
+current_signature | string  | `sign("LINK_IDENTITY " + base64url(sha256(base64url(sha256(username)) + new_identity)) + " " + timestamp, private_key(current_identity))`
+new_signature     | string  | `sign("LINK_IDENTITY " + base64url(sha256(base64url(sha256(username)) + current_identity)) + " " + timestamp, private_key(new_identity))`
 
 <details>
 <summary>Example Request</summary>
 
 > [!NOTE]
-> In this example, the signature is over `"ADD_IDENTITY " + base64url(sha256(base64url(sha256("example_user")) + "y4dr5PwoEpKYlJS8OojzcVgN0UI_NH8NRTVo5b3tAc8")) + " " + "1608726896"`,
-> which is `"ADD_IDENTITY " + base64url(sha256("j3BwXiW6oAwtuKkl1I53mum4elV3uQ1TOcP-8BEeH0Ay4dr5PwoEpKYlJS8OojzcVgN0UI_NH8NRTVo5b3tAc8")) + " 1608726896"`,
-> which is `"ADD_IDENTITY a4rotNE6ptJAWVIfGOfVsjAggvuuIbUBAGSirPYZo3Y 1608726896"`.
+> In this example, the "current" signature is over `"LINK_IDENTITY " + base64url(sha256(base64url(sha256("example_user")) + "y4dr5PwoEpKYlJS8OojzcVgN0UI_NH8NRTVo5b3tAc8")) + " " + "1608726896"`,
+> which is `"LINK_IDENTITY " + base64url(sha256("j3BwXiW6oAwtuKkl1I53mum4elV3uQ1TOcP-8BEeH0Ay4dr5PwoEpKYlJS8OojzcVgN0UI_NH8NRTVo5b3tAc8")) + " 1608726896"`,
+> which is `"LINK_IDENTITY a4rotNE6ptJAWVIfGOfVsjAggvuuIbUBAGSirPYZo3Y 1608726896"`.
+>
+> The "new" signature is over `"LINK_IDENTITY " + base64url(sha256(base64url(sha256("example_user")) + "V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs")) + " " + "1608726896"`,
+> which is `"LINK_IDENTITY " + base64url(sha256("j3BwXiW6oAwtuKkl1I53mum4elV3uQ1TOcP-8BEeH0AV7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs")) + " 1608726896"`,
+> which is `"LINK_IDENTITY b46N84wP43bqgM0erbqrKbZfxbYtupmQ9COZve07Rj0 1608726896"`.
 
 ```json
 POST /api/v1/user/identity HTTP/1.1
@@ -466,7 +463,8 @@ Content-Type: application/json
   "current_identity": "V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs",
   "new_identity": "y4dr5PwoEpKYlJS8OojzcVgN0UI_NH8NRTVo5b3tAc8",
   "username": "example_user",
-  "signature": "B3XsoxCmrRzvAdhQRVpfm0IfOXHlI2yQ6jSZuu2NTfn72vTIWJexNEudif4c4vZoLmFHW0GehIQZUfpBaB7XCg"
+  "current_signature": "_fIVMwSeiyMfEUo4T2wW0auDci_Y8TADlEbxt1LOqKxsAXDekjhQNWhT2rUIs3yTGo4HJ1jTXYpSzVh5t3G6DA",
+  "new_signature": "Xmp_RGNnQHvt-JIfPDHObtUjsHv64YTdNjW_emLWw9-d5dZQvTC2v2gPJqkUFa3oOZaPfMIbiOmuJWyerB3iCw"
 }
 ```
 </details>
@@ -497,19 +495,16 @@ error       | string | Error code.
 description | string | Human-readable description of the error (optional).
 
 **Possible Error Codes:**
-Status | Error Code               | Description
--------|--------------------------|---------------------------------------------
-400    | malformed_request        | Request body is not valid JSON.
-400    | timestamp_missing        | Timestamp field missing.
-400    | current_identity_missing | Current identity field missing.
-400    | new_identity_missing     | New identity field missing.
-400    | username_missing         | Username field missing.
-400    | signature_missing        | Signature field missing.
-400    | timestamp_invalid        | Timestamp is not a valid UNIX timestamp.
-400    | signature_invalid        | Signature does not match.
-400    | current_identity_invalid | Current identity not associated with the user.
-404    | unknown_current_identity | Current identity hash not found.
-404    | unknown_new_identity     | New identity hash not found.
+Status | Error Code                | Description
+-------|---------------------------|--------------------------------------------
+400    | malformed_request         | Request body is not valid JSON.
+400    | missing_field             | Required field missing.
+400    | timestamp_invalid         | Timestamp is too far from current time.
+400    | current_signature_invalid | Current signature does not match.
+400    | new_signature_invalid     | New signature does not match.
+400    | current_identity_invalid  | Current identity not associated with the user.
+404    | unknown_identity          | New identity hash not found.
+409    | identity_already_paired   | New identity already paired with another username.
 
 <details>
 <summary>Example Response</summary>
@@ -525,7 +520,7 @@ Content-Type: application/json
 </details>
 
 
-## Disassociate Identity from User
+## Unlink Identity from User
 
 Remove an identity association from a user.
 
@@ -545,15 +540,15 @@ Field     | Type    | Description
 timestamp | integer | Current UNIX timestamp in seconds.
 identity  | string  | Hash in base64url format of the identity to disassociate.
 username  | string  | User to disassociate from.
-signature | string  | `sign("REMOVE_IDENTITY " + base64url(sha256(base64url(sha256(username)) + identity)) + " " + timestamp, private_key(identity))`
+signature | string  | `sign("UNLINK_IDENTITY " + base64url(sha256(base64url(sha256(username)) + identity)) + " " + timestamp, private_key(identity))`
 
 <details>
 <summary>Example Request</summary>
 
 > [!NOTE]
-> In this example, the signature is over `"REMOVE_IDENTITY " + base64url(sha256(base64url(sha256("example_user")) + "V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs")) + " " + "1608726896"`,
-> which is `"REMOVE_IDENTITY " + base64url(sha256("j3BwXiW6oAwtuKkl1I53mum4elV3uQ1TOcP-8BEeH0AV7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs")) + " 1608726896"`,
-> which is `"REMOVE_IDENTITY b46N84wP43bqgM0erbqrKbZfxbYtupmQ9COZve07Rj0 1608726896"`.
+> In this example, the signature is over `"UNLINK_IDENTITY " + base64url(sha256(base64url(sha256("example_user")) + "V7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs")) + " " + "1608726896"`,
+> which is `"UNLINK_IDENTITY " + base64url(sha256("j3BwXiW6oAwtuKkl1I53mum4elV3uQ1TOcP-8BEeH0AV7hZQY0g61dMbywtkhZyIkXnU-wNBENi9xFFSX0qzTs")) + " 1608726896"`,
+> which is `"UNLINK_IDENTITY b46N84wP43bqgM0erbqrKbZfxbYtupmQ9COZve07Rj0 1608726896"`.
 
 ```json
 DELETE /api/v1/user/identity HTTP/1.1
@@ -597,11 +592,8 @@ description | string | Human-readable description of the error (optional).
 Status | Error Code              | Description
 -------|-------------------------|----------------------------------------------
 400    | malformed_request       | Request body is not valid JSON.
-400    | timestamp_missing       | Timestamp field missing.
-400    | identity_missing        | Identity field missing.
-400    | username_missing        | Username field missing.
-400    | signature_missing       | Signature field missing.
-400    | timestamp_invalid       | Timestamp is not a valid UNIX timestamp.
+400    | missing_field           | Required field missing.
+400    | timestamp_invalid       | Timestamp is too far from current time.
 400    | signature_invalid       | Signature does not match.
 400    | identity_not_associated | Identity is not associated with the user.
 404    | unknown_identity        | Identity hash not found.
@@ -770,20 +762,14 @@ description | string | Human-readable description of the error (optional).
 Status | Error Code                | Description
 -------|---------------------------|--------------------------------------------
 400    | malformed_request         | Request body is not valid JSON.
-400    | timestamp_missing         | Timestamp field missing.
-400    | identity_missing          | Identity field missing.
-400    | type_missing              | Type field missing.
-400    | data_missing              | Data field missing.
-400    | signature_missing         | Signature field missing.
-400    | share_identity_missing    | One or more share identity fields missing.
-400    | share_signature_missing   | One or more share signature fields missing.
-400    | timestamp_invalid         | Timestamp is not a valid UNIX timestamp.
+400    | missing_field             | Required field missing.
+400    | timestamp_invalid         | Timestamp is too far from current time.
 400    | type_invalid              | Type is not a valid GUID.
 400    | expiration_invalid        | Expiration is not a valid UNIX timestamp.
 400    | signature_invalid         | Signature does not match.
 400    | publish_signature_invalid | Publish signature does not match.
 400    | share_identity_invalid    | One or more share identity fields is not valid.
-400    | share_expiration_missing  | One or more share expiration fields is not a valid UNIX timestamp.
+400    | share_expiration_invalid  | One or more share expiration fields is not a valid UNIX timestamp.
 400    | share_signature_invalid   | One or more share signatures do not match.
 404    | unknown_identity          | Identity hash not found.
 
@@ -991,13 +977,8 @@ description | string | Human-readable description of the error (optional).
 Status | Error Code               | Description
 -------|--------------------------|---------------------------------------------
 400    | malformed_request        | Request body is not valid JSON.
-400    | timestamp_missing        | Timestamp field missing.
-400    | document_missing         | Document hash field missing.
-400    | identity_missing         | Sharing identity field missing.
-400    | share_missing            | Share targets field missing.
-400    | share_identity_missing   | One or more share identity fields missing.
-400    | share_signature_missing  | One or more share signature fields missing.
-400    | timestamp_invalid        | Timestamp is not a valid UNIX timestamp.
+400    | missing_field            | Required field missing.
+400    | timestamp_invalid        | Timestamp is too far from current time.
 400    | document_invalid         | Document hash is not valid.
 400    | identity_invalid         | Sharing identity is not valid.
 400    | share_invalid            | Share field is not valid.
@@ -1096,11 +1077,8 @@ description | string | Human-readable description of the error (optional).
 Status | Error Code        | Description
 -------|-------------------|----------------------------------------------------
 400    | malformed_request | Request body is not valid JSON.
-400    | timestamp_missing | Timestamp field missing.
-400    | identity_missing  | Identity field missing.
-400    | document_missing  | Document hash field missing.
-400    | signature_missing | Signature field missing.
-400    | timestamp_invalid | Timestamp is not a valid UNIX timestamp.
+400    | missing_field     | Required field missing.
+400    | timestamp_invalid | Timestamp is too far from current time.
 400    | document_invalid  | Document hash is not valid.
 400    | targets_invalid   | Targets field is not valid.
 400    | signature_invalid | Signature does not match.
@@ -1201,12 +1179,8 @@ error | string | Error code.
 Status | Error Code           | Description
 -------|----------------------|--------------------------
 400    | malformed_request    | Request body is not valid JSON.
-400    | timestamp_missing    | Timestamp field missing.
-400    | identity_missing     | Identity field missing.
-400    | document_missing     | Document hash field missing.
-400    | expiration_missing   | Expiration field missing.
-400    | signature_missing    | Signature field missing.
-400    | timestamp_invalid    | Timestamp is not a valid UNIX timestamp.
+400    | missing_field        | Required field missing.
+400    | timestamp_invalid    | Timestamp is too far from current time.
 400    | identity_invalid     | Identity is not valid.
 400    | document_invalid     | Document hash is not valid.
 400    | expiration_invalid   | Expiration is not a valid UNIX timestamp.
@@ -1348,11 +1322,8 @@ description | string | Human-readable description of the error (optional).
 Status | Error Code        | Description
 -------|-------------------|----------------------------------------------------
 400    | malformed_request | Request body is not valid JSON.
-400    | timestamp_missing | Timestamp field missing.
-400    | identity_missing  | Identity field missing.
-400    | types_missing     | Types field missing or empty.
-400    | signature_missing | Signature field missing.
-400    | timestamp_invalid | Timestamp is not a valid UNIX timestamp.
+400    | missing_field     | Required field missing.
+400    | timestamp_invalid | Timestamp is too far from current time.
 400    | identity_invalid  | Identity is not valid.
 400    | types_invalid     | Types field is not valid.
 400    | signature_invalid | Signature does not match.
@@ -1367,7 +1338,7 @@ HTTP/1.1 400 Bad Request
 Content-Type: application/json
 
 {
-  "error": "types_missing"
+  "error": "missing_field"
 }
 ```
 </details>
@@ -1455,10 +1426,8 @@ description | string | Human-readable description of the error (optional).
 **Possible Error Codes:**
 Status | Error Code        | Description
 -------|-------------------|----------------------------------------------------
-400    | timestamp_missing | Timestamp field missing.
-400    | identity_missing  | Identity field missing.
-400    | signature_missing | Signature field missing.
-400    | timestamp_invalid | Timestamp is not a valid UNIX timestamp.
+400    | missing_field     | Required field missing.
+400    | timestamp_invalid | Timestamp is too far from current time.
 400    | identity_invalid  | Identity is not valid.
 400    | signature_invalid | Signature does not match.
 400    | cursor_invalid    | Cursor field is not valid.
@@ -1564,10 +1533,8 @@ description | string | Human-readable description of the error (optional).
 **Possible Error Codes:**
 Status | Error Code        | Description
 -------|-------------------|----------------------------------------------------
-400    | identity_missing  | Identity field missing.
-400    | timestamp_missing | Timestamp field missing.
-400    | signature_missing | Signature field missing.
-400    | timestamp_invalid | Timestamp is not a valid UNIX timestamp.
+400    | missing_field     | Required field missing.
+400    | timestamp_invalid | Timestamp is too far from current time.
 400    | identity_invalid  | Identity is not valid.
 400    | types_invalid     | Types field is not valid.
 400    | signature_invalid | Signature does not match.

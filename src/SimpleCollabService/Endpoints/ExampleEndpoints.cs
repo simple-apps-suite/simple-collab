@@ -10,7 +10,6 @@
 using System.Buffers;
 using System.Buffers.Text;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -18,10 +17,8 @@ using System.Text.Unicode;
 using Chaos.NaCl;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Options;
 using SimpleCollabService.Data;
 using SimpleCollabService.Repository.Sqlite;
 using SimpleCollabService.Repository.Sqlite.Data;
@@ -47,25 +44,13 @@ static class ExampleEndpoints
     )
     {
         if (req.Timestamp is 0)
-            return ErrorResponse.Result(
-                StatusCodes.Status400BadRequest,
-                ErrorCode.MissingTimestamp,
-                ErrorMessage.MissingTimestamp
-            );
+            return ErrorResponse.MissingField("timestamp");
 
         if (req.PublicKey is null)
-            return ErrorResponse.Result(
-                StatusCodes.Status400BadRequest,
-                ErrorCode.MissingPublicKey,
-                ErrorMessage.MissingPublicKey
-            );
+            return ErrorResponse.MissingField("public_key");
 
         if (req.Pow is null)
-            return ErrorResponse.Result(
-                StatusCodes.Status400BadRequest,
-                ErrorCode.MissingProofOfWork,
-                ErrorMessage.MissingProofOfWork
-            );
+            return ErrorResponse.MissingField("pow");
 
         long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         if (!IsValidTimestamp(req.Timestamp, now))
@@ -140,32 +125,16 @@ static class ExampleEndpoints
     )
     {
         if (req.Timestamp is 0)
-            return ErrorResponse.Result(
-                StatusCodes.Status400BadRequest,
-                ErrorCode.MissingTimestamp,
-                ErrorMessage.MissingTimestamp
-            );
+            return ErrorResponse.MissingField("timestamp");
 
         if (string.IsNullOrEmpty(req.Identity))
-            return ErrorResponse.Result(
-                StatusCodes.Status400BadRequest,
-                ErrorCode.MissingIdentity,
-                ErrorMessage.MissingIdentity
-            );
+            return ErrorResponse.MissingField("identity");
 
         if (string.IsNullOrEmpty(req.Username))
-            return ErrorResponse.Result(
-                StatusCodes.Status400BadRequest,
-                ErrorCode.MissingUsername,
-                ErrorMessage.MissingUsername
-            );
+            return ErrorResponse.MissingField("username");
 
         if (string.IsNullOrEmpty(req.Signature))
-            return ErrorResponse.Result(
-                StatusCodes.Status400BadRequest,
-                ErrorCode.MissingSignature,
-                ErrorMessage.MissingSignature
-            );
+            return ErrorResponse.MissingField("signature");
 
         long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         if (!IsValidTimestamp(req.Timestamp, now))
@@ -203,12 +172,7 @@ static class ExampleEndpoints
             return signatureError;
 
         // Associate identity with new user.
-        bool associated = await SqliteQueries.AssociateIdentityToUserAsync(
-            db,
-            req.Username,
-            identityHash,
-            cancellationToken
-        );
+        bool associated = await SqliteQueries.RegisterUserAsync(db, req.Username, identityHash, cancellationToken);
         if (!associated)
         {
             string currentUsername = await SqliteQueries.GetIdentityUsernameAsync(db, identityHash, cancellationToken);
@@ -236,32 +200,16 @@ static class ExampleEndpoints
     )
     {
         if (req.Timestamp is 0)
-            return ErrorResponse.Result(
-                StatusCodes.Status400BadRequest,
-                ErrorCode.MissingTimestamp,
-                ErrorMessage.MissingTimestamp
-            );
+            return ErrorResponse.MissingField("timestamp");
 
         if (string.IsNullOrEmpty(req.Identity))
-            return ErrorResponse.Result(
-                StatusCodes.Status400BadRequest,
-                ErrorCode.MissingIdentity,
-                ErrorMessage.MissingIdentity
-            );
+            return ErrorResponse.MissingField("identity");
 
         if (string.IsNullOrEmpty(req.Username))
-            return ErrorResponse.Result(
-                StatusCodes.Status400BadRequest,
-                ErrorCode.MissingUsername,
-                ErrorMessage.MissingUsername
-            );
+            return ErrorResponse.MissingField("username");
 
         if (string.IsNullOrEmpty(req.Signature))
-            return ErrorResponse.Result(
-                StatusCodes.Status400BadRequest,
-                ErrorCode.MissingSignature,
-                ErrorMessage.MissingSignature
-            );
+            return ErrorResponse.MissingField("signature");
 
         long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         if (!IsValidTimestamp(req.Timestamp, now))
@@ -286,7 +234,7 @@ static class ExampleEndpoints
         if (signatureError is not null)
             return signatureError;
 
-        UserInfo info = await SqliteQueries.GetUserInfo(db, identityHash, cancellationToken);
+        UserInfo info = await SqliteQueries.GetUserInfoAsync(db, identityHash, cancellationToken);
 
         if (string.Compare(info.Username, req.Username, StringComparison.OrdinalIgnoreCase) is not 0)
             return ErrorResponse.Result(
@@ -297,6 +245,120 @@ static class ExampleEndpoints
 
         // TODO: read quota from config.
         return Results.Ok<UserInfoResponse>(new(123456789, info.UsedBytes, info.Expiration));
+    }
+
+    public static async Task<IResult> LinkIdentityAsync(
+        [FromServices] SqliteConnection db,
+        [FromBody] IdentityLinkRequest req,
+        CancellationToken cancellationToken
+    )
+    {
+        if (req.Timestamp is 0)
+            return ErrorResponse.MissingField("timestamp");
+
+        if (string.IsNullOrEmpty(req.CurrentIdentity))
+            return ErrorResponse.MissingField("current_identity");
+
+        if (string.IsNullOrEmpty(req.NewIdentity))
+            return ErrorResponse.MissingField("new_identity");
+
+        if (string.IsNullOrEmpty(req.Username))
+            return ErrorResponse.MissingField("username");
+
+        if (string.IsNullOrEmpty(req.CurrentSignature))
+            return ErrorResponse.MissingField("current_signature");
+
+        if (string.IsNullOrEmpty(req.NewSignature))
+            return ErrorResponse.MissingField("new_signature");
+
+        long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        if (!IsValidTimestamp(req.Timestamp, now))
+            return ErrorResponse.Result(
+                StatusCodes.Status400BadRequest,
+                ErrorCode.InvalidTimestamp,
+                ErrorMessage.TimestampOutOfRange
+            );
+
+        // Validate "current" signature.
+        byte[] usernameHash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(req.Username));
+        string usernameHashBase64 = Base64Url.EncodeToString(usernameHash);
+        byte[] currentHash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(usernameHashBase64 + req.NewIdentity));
+        string currentHashBase64 = Base64Url.EncodeToString(currentHash);
+        (IResult? currentSignatureError, byte[] currentIdentityHash) = await ValidateSignatureAsync(
+            db,
+            "LINK_IDENTITY",
+            req.Timestamp,
+            req.CurrentIdentity,
+            req.CurrentSignature,
+            currentHashBase64,
+            cancellationToken,
+            ErrorCode.InvalidCurrentIdentity,
+            ErrorCode.InvalidCurrentSignature
+        );
+        if (currentSignatureError is not null)
+            return currentSignatureError;
+
+        // Validate "new" signature.
+        byte[] newHash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(usernameHashBase64 + req.CurrentIdentity));
+        string newHashBase64 = Base64Url.EncodeToString(newHash);
+        (IResult? newSignatureError, byte[] newIdentityHash) = await ValidateSignatureAsync(
+            db,
+            "LINK_IDENTITY",
+            req.Timestamp,
+            req.NewIdentity,
+            req.NewSignature,
+            newHashBase64,
+            cancellationToken,
+            ErrorCode.UnknownIdentity,
+            ErrorCode.InvalidNewSignature
+        );
+        if (newSignatureError is not null)
+            return newSignatureError;
+
+        // Ensure the current identity is linked to the specified user.
+        string username = await SqliteQueries.GetIdentityUsernameAsync(db, currentIdentityHash, cancellationToken);
+        if (string.Compare(username, req.Username, StringComparison.OrdinalIgnoreCase) is not 0)
+            return ErrorResponse.Result(
+                StatusCodes.Status400BadRequest,
+                ErrorCode.InvalidCurrentIdentity,
+                ErrorMessage.MismatchedIdentity
+            );
+
+        // Associate new identity with user.
+        bool assigned = await SqliteQueries.LinkIdentityAsync(
+            db,
+            req.Username,
+            currentIdentityHash,
+            newIdentityHash,
+            cancellationToken
+        );
+        if (!assigned)
+        {
+            string currentUsername = await SqliteQueries.GetIdentityUsernameAsync(
+                db,
+                newIdentityHash,
+                cancellationToken
+            );
+            if (currentUsername is not null)
+                return ErrorResponse.Result(
+                    StatusCodes.Status409Conflict,
+                    ErrorCode.IdentityAlreadyPaired,
+                    string.Format(CultureInfo.InvariantCulture, ErrorMessage.IdentityAlreadyPaired, currentUsername)
+                );
+
+            // We might reach here in the rare case the "current identity" was
+            // linked to the correct username when we checked, but then the link
+            // was severed before we could link the new identity; or in the
+            // still rare but slightly more probable case the new identity was
+            // garbage-collected before we could link it.
+            return ErrorResponse.Result(
+                StatusCodes.Status400BadRequest,
+                ErrorCode.UnknownIdentity,
+                ErrorMessage.UnknownYourIdentity
+            );
+        }
+
+        return Results.Ok(new IdentityLinkResponse());
     }
 
     public static IResult InvalidApiEndpoint()
@@ -357,33 +419,31 @@ static class ExampleEndpoints
         string identity,
         string signature,
         string payload,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        ErrorCode unknownIdentity = ErrorCode.UnknownIdentity,
+        ErrorCode invalidSignature = ErrorCode.InvalidSignature
     )
     {
         byte[] identityHash = new byte[32];
         if (!Base64Url.TryDecodeFromChars(identity, identityHash, out int hashLen) || hashLen != SHA256.HashSizeInBytes)
             return (
-                ErrorResponse.Result(
-                    StatusCodes.Status400BadRequest,
-                    ErrorCode.UnknownIdentity,
-                    ErrorMessage.InvalidIdentity
-                ),
+                ErrorResponse.Result(StatusCodes.Status400BadRequest, unknownIdentity, ErrorMessage.InvalidIdentity),
                 []
             );
 
-#if !DEBUG_ACCEPT_ANY_SIGNATURE
         // Get public key for the identity.
         byte[]? publicKey = await SqliteQueries.GetPublicKeyByHashAsync(db, identityHash, cancellationToken);
         if (publicKey is null)
             return (
                 ErrorResponse.Result(
                     StatusCodes.Status400BadRequest,
-                    ErrorCode.UnknownIdentity,
+                    unknownIdentity,
                     ErrorMessage.UnknownYourIdentity
                 ),
                 []
             );
 
+#if !DEBUG_ACCEPT_ANY_SIGNATURE
         // Compute message: prefix + " " + payload + " " + timestamp
         string message = string.Format(CultureInfo.InvariantCulture, "{0} {1} {2}", prefix, payload, timestamp);
         byte[] messageBytes = System.Text.Encoding.UTF8.GetBytes(message);
@@ -394,7 +454,7 @@ static class ExampleEndpoints
             return (
                 ErrorResponse.Result(
                     StatusCodes.Status400BadRequest,
-                    ErrorCode.InvalidSignature,
+                    invalidSignature,
                     string.Format(CultureInfo.InvariantCulture, ErrorMessage.SignatureMismatch, message)
                 ),
                 []
@@ -405,7 +465,7 @@ static class ExampleEndpoints
             return (
                 ErrorResponse.Result(
                     StatusCodes.Status400BadRequest,
-                    ErrorCode.InvalidSignature,
+                    invalidSignature,
                     string.Format(CultureInfo.InvariantCulture, ErrorMessage.SignatureMismatch, message)
                 ),
                 []

@@ -77,14 +77,18 @@ static class SqlCommandHelper
             {
                 partial {{data.TypeType}} {{data.TypeName}}
                 {
-                    /// <summary>
-                    /// Execute SQL {{(data.IsQuery ? "query" : "command")}}.
-                    /// <code>
-                    /// {{data.Sql.ReplaceNewLines('\n' + """
+                    /// {{data.XmlDocumentation?.ReplaceNewLines('\n' + """
                     /// X
-            """.TrimEnd('X')).ReplaceNewLines()}}
+            """.TrimEnd('X'))}}{{(data.XmlDocumentation?.Contains("<remarks>") ?? false ? "" : $$"""
+            <remarks>
+                    /// Executes the following SQL {{(data.IsQuery ? "query" : "command")}}:
+                    /// <code>
+                    /// {{data.Sql.EscapeXml().ReplaceNewLines('\n' + """
+                    /// X
+            """.TrimEnd('X'))}}
                     /// </code>
-                    /// </summary>
+                    /// </remarks>
+            """)}}
                     [CompilerGenerated]
                     {{data.MethodVisibility}}{{(data.MethodVisibility is null ? "" : " ")}}static async partial {{data.ResultType ?? "void"}} {{data.MethodName}}({{string.Join(", ", data.Parameters.Select(p => $"{(data.ReturnsAsyncEnumerable && p.Type == KnownTypeNames.CancellationToken ? "[EnumeratorCancellation] " : "")}{p.Type} {p.Name}"))}})
                     {
@@ -94,7 +98,7 @@ static class SqlCommandHelper
                         command.CommandText = {{"\"\"\""}}
                             {{data.Sql.ReplaceNewLines('\n' + """
                             X
-            """.TrimEnd('X')).ReplaceNewLines()}}
+            """.TrimEnd('X'))}}
                             {{"\"\"\""}};
 
                         // Parameters
@@ -164,7 +168,7 @@ static class SqlCommandHelper
             """)}}
             """,
             _ => $$"""
-                            {{(data.ResultTypeInner is null ? "" : "return ")}}await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                            {{(data.ResultTypeInner is null ? "" : "return ")}}await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false){{(data.ResultTypeInner is "bool" ? " > 0" : "")}};
             """
         })}}
                         }

@@ -79,25 +79,50 @@ static partial class SqliteQueries
     );
 
     /// <summary>
-    /// Associate identity to user if the identity is not already associated
-    /// withanother user, and there are no other identities associated with
-    /// this user.
+    /// Link identity to user if the identity is not already linked to another
+    /// user, and there are no other identities linked to this user.
     /// </summary>
-    [SqlQuery(
+    [SqlCommand(
         """
             WITH usr(id) AS (SELECT id FROM users WHERE username = $username)
             UPDATE identities
             SET user_id = (SELECT id FROM usr)
             WHERE hash = $identity_hash
-              AND (user_id IS NULL OR user_id = (SELECT id FROM usr)) -- No other user for the identity.
-              AND NOT EXISTS (SELECT 1 FROM identities AS i INNER JOIN users AS u ON i.user_id = u.id AND hash <> $identity_hash) -- No other identity for the user.
-            RETURNING 1;
+              AND (user_id IS NULL OR user_id = (SELECT id FROM usr)) -- No other user is linked to the identity.
+              AND NOT EXISTS (SELECT 1 FROM identities AS i INNER JOIN users AS u ON i.user_id = u.id AND hash <> $identity_hash) -- No other identity is linked to the user.
             """
     )]
-    public static partial Task<bool> AssociateIdentityToUserAsync(
+    public static partial Task<bool> RegisterUserAsync(
         SqliteConnection connection,
         string username,
         byte[] identity_hash,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
+    /// Link new identity to user if the identity is not already linked to
+    /// another user, and only if the specified current identity is associated
+    /// with this user.
+    /// </summary>
+    [SqlCommand(
+        """
+            WITH usr(id) AS (
+                SELECT u.id
+                FROM users u
+                INNER JOIN identities i ON i.user_id = u.id AND i.hash == $current_identity_hash -- Current identity is linked to the user.
+                WHERE u.username = $username
+            )
+            UPDATE identities
+            SET user_id = (SELECT id FROM usr)
+            WHERE hash = $new_identity_hash
+              AND (user_id IS NULL OR user_id = (SELECT id FROM usr)) -- No other user is linked to the new identity.
+            """
+    )]
+    public static partial Task<bool> LinkIdentityAsync(
+        SqliteConnection connection,
+        string username,
+        byte[] current_identity_hash,
+        byte[] new_identity_hash,
         CancellationToken cancellationToken = default
     );
 
@@ -125,7 +150,7 @@ static partial class SqliteQueries
             LIMIT 1
             """
     )]
-    public static partial Task<UserInfo> GetUserInfo(
+    public static partial Task<UserInfo> GetUserInfoAsync(
         SqliteConnection connection,
         byte[] identity_hash,
         CancellationToken cancellationToken = default

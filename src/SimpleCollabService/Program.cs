@@ -37,6 +37,7 @@ v1.MapPost("/identity", ExampleEndpoints.RegisterIdentityAsync);
 v1.MapGet("/identity/{hash}", ExampleEndpoints.IdentityAsync);
 v1.MapPost("/user", ExampleEndpoints.RegisterUserAsync);
 v1.MapPost("/user/info", ExampleEndpoints.UserInfoAsync);
+v1.MapPost("/user/identity", ExampleEndpoints.LinkIdentityAsync);
 v1.MapFallback(ExampleEndpoints.InvalidApiEndpoint);
 
 await app.RunAsync();
@@ -44,6 +45,8 @@ await app.RunAsync();
 [JsonSerializable(typeof(ErrorCode))]
 [JsonSerializable(typeof(ErrorResponse))]
 [JsonSerializable(typeof(IdentityResponse))]
+[JsonSerializable(typeof(IdentityLinkRequest))]
+[JsonSerializable(typeof(IdentityLinkResponse))]
 [JsonSerializable(typeof(RegisterIdentityRequest))]
 [JsonSerializable(typeof(RegisterIdentityResponse))]
 [JsonSerializable(typeof(RegisterUserRequest))]

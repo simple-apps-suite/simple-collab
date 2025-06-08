@@ -10,10 +10,7 @@ namespace SimpleCollabService.Repository.Sqlite;
 
 static partial class SqliteHelper
 {
-    delegate Task SqliteMigrationAsync(
-        SqliteConnection connection,
-        CancellationToken cancellationToken
-    );
+    delegate Task SqliteMigrationAsync(SqliteConnection connection, CancellationToken cancellationToken);
 
     static readonly (string Name, SqliteMigrationAsync MigrateAsync)[] s_migrations =
     [
@@ -29,11 +26,7 @@ static partial class SqliteHelper
 
         HashSet<string> unappliedMigrations = [.. s_migrations.Select(m => m.Name)];
 
-        if (
-            await SqliteQueries
-                .TableExistsAsync(connection, "migrations", cancellationToken)
-                .ConfigureAwait(false)
-        )
+        if (await SqliteQueries.TableExistsAsync(connection, "migrations", cancellationToken).ConfigureAwait(false))
         {
             await foreach (
                 string appliedMigration in SqliteQueries
@@ -54,12 +47,7 @@ static partial class SqliteHelper
                 await migrateAsync(connection, cancellationToken).ConfigureAwait(false);
 
                 await SqliteQueries
-                    .InsertMigrationAsync(
-                        connection,
-                        name,
-                        DateTime.UtcNow.ToUnixTimeSeconds(),
-                        cancellationToken
-                    )
+                    .InsertMigrationAsync(connection, name, DateTime.UtcNow.ToUnixTimeSeconds(), cancellationToken)
                     .ConfigureAwait(false);
 
                 await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -67,9 +55,6 @@ static partial class SqliteHelper
         }
     }
 
-    static Task ApplyMigration<TMigration>(
-        SqliteConnection connection,
-        CancellationToken cancellationToken
-    )
+    static Task ApplyMigration<TMigration>(SqliteConnection connection, CancellationToken cancellationToken)
         where TMigration : ISqliteMigration => TMigration.Apply(connection, cancellationToken);
 }

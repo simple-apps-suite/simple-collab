@@ -22,23 +22,8 @@ enum ErrorCode
     [EnumMember(Value = "unexpected_error")]
     UnexpectedError,
 
-    [EnumMember(Value = "public_key_missing")]
-    MissingPublicKey,
-
-    [EnumMember(Value = "timestamp_missing")]
-    MissingTimestamp,
-
-    [EnumMember(Value = "pow_missing")]
-    MissingProofOfWork,
-
-    [EnumMember(Value = "identity_missing")]
-    MissingIdentity,
-
-    [EnumMember(Value = "username_missing")]
-    MissingUsername,
-
-    [EnumMember(Value = "signature_missing")]
-    MissingSignature,
+    [EnumMember(Value = "missing_field")]
+    MissingRequiredField,
 
     [EnumMember(Value = "timestamp_invalid")]
     InvalidTimestamp,
@@ -55,11 +40,20 @@ enum ErrorCode
     [EnumMember(Value = "identity_invalid")]
     InvalidIdentity,
 
+    [EnumMember(Value = "current_identity_invalid")]
+    InvalidCurrentIdentity,
+
     [EnumMember(Value = "username_invalid")]
     InvalidUsername,
 
     [EnumMember(Value = "signature_invalid")]
     InvalidSignature,
+
+    [EnumMember(Value = "current_signature_invalid")]
+    InvalidCurrentSignature,
+
+    [EnumMember(Value = "new_signature_invalid")]
+    InvalidNewSignature,
 
     [EnumMember(Value = "unknown_identity")]
     UnknownIdentity,

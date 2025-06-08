@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2025 Fabio Iotti
 // SPDX-License-Identifier: AGPL-3.0-only
 
+using System.Globalization;
 using System.Text.Json.Serialization;
 
 namespace SimpleCollabService.Data;
@@ -16,4 +17,11 @@ record ErrorResponse(ErrorCode Error)
         Results.Json<ErrorResponse>(new(error) { Description = description }, statusCode: status);
 #pragma warning restore IL3050 // Calling members annotated with 'RequiresDynamicCodeAttribute' may break functionality when AOT compiling.
 #pragma warning restore IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
+
+    public static IResult MissingField(string name) =>
+        Result(
+            StatusCodes.Status400BadRequest,
+            ErrorCode.MissingRequiredField,
+            string.Format(CultureInfo.InvariantCulture, ErrorMessage.RequiredFieldMissing, "signature")
+        );
 }

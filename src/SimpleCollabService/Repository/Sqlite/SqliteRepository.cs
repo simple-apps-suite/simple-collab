@@ -10,7 +10,5 @@ public class SqliteRepository(SqliteConnection connection) : ISimpleCollabReposi
 {
     /// <inheritdoc/>
     public async ValueTask ApplyMigrationsAsync(CancellationToken cancellationToken = default) =>
-        await SqliteHelper
-            .ApplyMigrationsAsync(connection, cancellationToken)
-            .ConfigureAwait(false);
+        await SqliteHelper.ApplyMigrationsAsync(connection, cancellationToken).ConfigureAwait(false);
 }
